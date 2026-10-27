@@ -7,6 +7,7 @@ import json
 
 from .assembly import catalog, geometry_from_dxf, geometry_from_structure, progress_series, stage_plan, solve_stage
 from .demo_model import generate_demo_dome
+from .default_model import default_model
 from .design_materials import material_catalog
 from .aisc import check_stage, check_all_stages
 from .report import build_report, report_xlsx
@@ -33,6 +34,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200,(ROOT/'src/domestage/static'/path.lstrip('/')).read_bytes(),'text/javascript; charset=utf-8')
         if path=='/api/design-materials': return self.send(200,material_catalog())
         if path=='/api/catalog': return self.send(200,catalog())
+        if path=='/api/default-model': return self.send(200,default_model())
         if path=='/api/demo': return self.send(200,geometry_from_structure(generate_demo_dome(total_height=3.2)))
         self.send(404,{'message':'Ruta no disponible.'})
 
