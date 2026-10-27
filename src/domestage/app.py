@@ -18,8 +18,8 @@ from domestage.design_dashboard import select_design,render_design
 from domecalc.importer import declared_units,UNITS
 from domecalc.viewer import export_viewer
 
-st.set_page_config(page_title='DomeStage · motor estructural',layout='wide')
-st.title('GEOMETRICA · Montaje de domos')
+st.set_page_config(page_title='DomeStage+ · Análisis de construcción de domos de acero',layout='wide')
+st.title('DomeStage+ · Análisis de construcción de domos de acero')
 st.caption('Equilibrio elástico lineal real por etapa · peso propio y un instalador')
 
 @st.cache_data(show_spinner=False,max_entries=4)

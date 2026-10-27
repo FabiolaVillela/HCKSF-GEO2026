@@ -19,7 +19,7 @@ const spanish={
   "AISC stage and member results":"Resultados AISC por etapa y barra",
   "AISC basis":"ANSI/AISC 360-22 LRFD · 1.4D · t=0.93t nominal · K=1 · L=entre nodos · An=Ag · U=1 · Solo primer orden. No se revisan cortante, torsión, conexiones ni estabilidad del capítulo C. Utilización ≤1: dentro de las revisiones incluidas; >1: excede; gris: no disponible. No constituye una aprobación integral de diseño.",
   "Language": "Idioma",
-  "🏗️ GEOMETRICA · Steel Dome Construction Analysis": "🏗️ GEOMETRICA · Análisis de construcción de domos de acero",
+  "🏗️ DomeStage+ · Steel Dome Construction Analysis": "🏗️ DomeStage+ · Análisis de construcción de domos de acero",
   "Stage-by-stage structural simulation · Self-weight + 25 kg dead load per installed node": "Simulación estructural por etapas · Peso propio + 25 kg de carga muerta por nodo instalado",
   "INITIALIZING": "INICIALIZANDO",
   "📁 1. CAD Geometry & DXF": "📁 1. Geometría CAD y DXF",
@@ -235,7 +235,7 @@ function translate(key,values={}){
 }
 function translateStatic(){
  document.documentElement.lang=language;
- document.title=language==='es'?'GEOMETRICA · Análisis de construcción de domos':'GEOMETRICA · Steel Dome Construction Analysis';
+ document.title=language==='es'?'DomeStage+ · Análisis de construcción de domos de acero':'DomeStage+ · Steel Dome Construction Analysis';
  document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=translate(el.dataset.i18n));
  for(const attr of ['aria-label','title'])document.querySelectorAll('[data-i18n-'+attr+']').forEach(el=>el.setAttribute(attr,translate(el.getAttribute('data-i18n-'+attr))));
  $('language-select').value=language;
