@@ -29,6 +29,8 @@ class ViewerExportTests(unittest.TestCase):
         self.assertTrue(data['nodes'][0]['s'])
         self.assertTrue(data['nodes'][0]['rFixed'])
         self.assertEqual(data['meta']['material'],'Aluminio')
+        self.assertEqual(data['view'],{'show_deformed':False,'deformation_scale':10.})
+        self.assertEqual(data['nodes'][1]['u'],result['nodes'][1]['displacement'][:3])
         self.assertEqual(data['center'],[1.5,0,0])
         self.assertGreater(data['diameter'],3)
 
