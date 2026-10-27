@@ -19,9 +19,11 @@ from domecalc.catalog import MATERIALS, HSS, properties
 from domecalc.core import Model, analyze
 from domecalc.truss import analyze_truss
 from domecalc.importer import inspect_dxf
+from .validity import chord_rotations, rotation_problem
 
 G = 9.80665
 MAX_NODES = 500
+DEFAULT_NODE_DEAD_LOAD_KG = 25.0
 
 
 def finite(value, name):
@@ -122,7 +124,8 @@ def geometry_from_structure(model):
 
 
 def geometry_from_dxf(content, units=None, tolerance=0.001):
-    inspection = inspect_dxf(content, units or 'auto', tolerance, ())
+    # None lets the importer use the units declared in the DXF ($INSUNITS); 'auto' is not a unit it accepts.
+    inspection = inspect_dxf(content, None if units in (None, '', 'auto') else units, tolerance, ())
     if inspection.report['errors']:
         raise ValueError('; '.join(inspection.report['errors']))
     model = inspection.model
@@ -143,24 +146,44 @@ def solve_stage(geometry, config=None, stage=0):
     return json.loads(_cached_stage(payload))
 
 
-def progress_series(geometry, config=None):
+def progress_series(geometry, config=None, design=None):
     """Máximos por etapa frente al % de avance, para las gráficas de resultados.
 
     Las etapas sin solución (mecanismo o error) se devuelven con valores None:
     no se inventan fuerzas ni desplazamientos.
+
+    Con `design` (grado de material para AISC, p. ej. {'grade': 'a500-21-c'}) cada etapa resuelta
+    incluye además la utilización máxima preliminar AISC 360-22 (`aisc.check_result`). Sin grado,
+    con aluminio o con carga de instalador no se revisa: `max_utilization` es None y
+    `utilization_status` dice por qué ('no_grade', 'aluminum', 'installer').
     """
-    config=dict(config or {})
+    from .aisc import check_result  # local import: aisc depends on this module
+    from .design_materials import design_material
+    config=dict(config or {}); design=dict(design or {})
     plan=stage_plan(geometry,config.get('bars_per_step',2))
+    material=config.get('material','Acero')
+    if material!='Acero': mode='aluminum'
+    elif not design.get('grade'): mode='no_grade'
+    elif config.get('worker_kg',0): mode='installer'
+    else:
+        mode='aisc'; design_material(material,design)  # invalid grade -> ValueError before solving
     series=[]
     for info in plan:
         r=solve_stage(geometry,config,info['stage'])
         stable=r['status']=='stable'
         tension=r['max_tension_kn'] if stable else None
         compression=r['max_compression_kn'] if stable else None
-        series.append(dict(stage=info['stage'],progress_pct=info['progress_pct'],active_count=info['active_count'],
-                           status=r['status'],max_tension_kn=tension,max_compression_kn=compression,
-                           max_force_kn=max(tension,compression) if stable else None,
-                           max_displacement_mm=r['max_displacement_mm'] if stable else None))
+        row=dict(stage=info['stage'],progress_pct=info['progress_pct'],active_count=info['active_count'],
+                 status=r['status'],max_tension_kn=tension,max_compression_kn=compression,
+                 max_force_kn=max(tension,compression) if stable else None,
+                 max_displacement_mm=r['max_displacement_mm'] if stable else None,
+                 utilization_status=mode,max_utilization=None,governing_bar=None,governing_equation=None)
+        if stable and mode=='aisc':
+            checked=check_result(r,design)
+            governing=checked.get('governing') or {}
+            row.update(max_utilization=checked['max_utilization'],governing_bar=governing.get('member_id'),
+                       governing_equation=governing.get('equation'))
+        series.append(row)
     return series
 
 
@@ -189,6 +212,10 @@ def _solve(geometry, config, stage):
     if not 0 <= worker_kg <= 10000:
         raise ValueError('Masa de instalador fuera de rango (0–10000 kg).')
 
+    node_dead_load_kg = finite(config.get('node_dead_load_kg', DEFAULT_NODE_DEAD_LOAD_KG), 'Carga muerta por nodo')
+    if not 0 <= node_dead_load_kg <= 10000:
+        raise ValueError('Carga muerta por nodo fuera de rango (0–10000 kg).')
+
     support_overrides = config.get('support_overrides', {})
 
     material, section = properties(material_name, profile_name)
@@ -196,15 +223,16 @@ def _solve(geometry, config, stage):
     by_id = {b['id']: b for b in bars}
     active = [by_id[bid] for bid in info['active_bar_ids']]
     mass = sum(math.dist(nodes[b['i']], nodes[b['j']]) for b in active) * material.density * section.A
+    active_nodes = sorted({n for b in active for n in (b['i'], b['j'])})
     worker_node = by_id[info['new_bar_ids'][-1]]['j'] if stage > 0 and info['new_bar_ids'] and worker_kg else None
 
     result = dict(**info, stable=None, status='empty', message='No hay barras instaladas en esta etapa.',
                  forces={}, reactions=[], displacements=[], elements=[], max_tension_kn=None, max_compression_kn=None,
                  max_displacement_mm=None, mass_kg=mass, worker_node=worker_node,
+                 node_dead_load_kg=node_dead_load_kg, node_dead_load_total_N=len(active_nodes)*node_dead_load_kg*G,
                  worker_load_N=worker_kg * G if worker_node is not None else 0,
                  material=material_name, profile=profile_name, connection=connection, support=support)
     if not active: return result
-    active_nodes = sorted({n for b in active for n in (b['i'], b['j'])})
     mapping = {nid: i for i, nid in enumerate(active_nodes)}
 
     support_conditions = {}
@@ -218,7 +246,10 @@ def _solve(geometry, config, stage):
                   [(mapping[b['i']], mapping[b['j']], 'montaje') for b in active],
                   support_conditions)
 
-    loads = {mapping[worker_node]: [0, 0, -worker_kg * G, 0, 0, 0]} if worker_node is not None else {}
+    # One additional gravity load per installed node, including supports.
+    loads = {mapping[n]: [0, 0, -node_dead_load_kg * G, 0, 0, 0] for n in active_nodes}
+    if worker_node is not None:
+        loads[mapping[worker_node]][2] -= worker_kg * G
     solver = analyze if connection == 'empotrada' else analyze_truss
     try:
         solved = solver(model, material, section, nodal_loads=loads)
@@ -226,6 +257,15 @@ def _solve(geometry, config, stage):
         message = str(exc)
         unstable = isinstance(exc, np.linalg.LinAlgError) or any(w in message.lower() for w in ('inestable', 'condicionado', 'singular', 'unstable', 'mechanism'))
         result.update(stable=False if unstable else None, status='unstable' if unstable else 'error', message=message)
+        return result
+    shift = {active_nodes[node['id']]: node['displacement'][:3] for node in solved['nodes']}
+    rotations = chord_rotations([nodes[b['i']] for b in active], [nodes[b['j']] for b in active],
+                                [shift[b['i']] for b in active], [shift[b['j']] for b in active])
+    worst = int(np.argmax(rotations))
+    problem = rotation_problem(active[worst]['id'], float(rotations[worst]))
+    if problem:
+        # Shallow near-mechanism: report it as unsolved, like a mechanism, with no values.
+        result.update(stable=False, status='unstable', message=problem)
         return result
     solution = deepcopy(solved)
     for node in solution['nodes']: node['source_id'] = active_nodes[node['id']]

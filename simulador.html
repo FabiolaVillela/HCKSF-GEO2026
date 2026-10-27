@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dome Assembly Simulator · GEOMETRICA</title>
+  <title>DomeStage+ · Steel Dome Construction Analysis</title>
   <style>
     :root {
       /* Geometrica Official Brand Colors */
@@ -264,8 +264,8 @@
 
   <header>
     <div>
-      <h1><span data-i18n="🏗️ GEOMETRICA · Steel Dome Construction Analysis">🏗️ GEOMETRICA · Steel Dome Construction Analysis</span></h1>
-      <div class="header-sub"><span data-i18n="Stage-by-stage structural simulation · Self-weight linear elastic equilibrium">Stage-by-stage structural simulation · Self-weight linear elastic equilibrium</span></div>
+      <h1><span data-i18n="🏗️ DomeStage+ · Steel Dome Construction Analysis">🏗️ DomeStage+ · Steel Dome Construction Analysis</span></h1>
+      <div class="header-sub"><span data-i18n="Stage-by-stage structural simulation · Self-weight + 25 kg dead load per installed node">Stage-by-stage structural simulation · Self-weight + 25 kg dead load per installed node</span></div>
     </div>
     <label class="language-control"><span data-i18n="Language">Language</span> <select id="language-select" aria-label="Language / Idioma"><option value="en">English</option><option value="es">Español</option></select></label>
     <div id="status-badge" class="badge badge-pending"><span data-i18n="INITIALIZING">INITIALIZING</span></div>
@@ -293,6 +293,11 @@
       <div class="control-row">
         <span class="control-label"><span data-i18n="Merge Tolerance (mm):">Merge Tolerance (mm):</span></span>
         <input id="dxf-tolerance" type="number" min="0.0001" max="50" value="1.0" step="0.1">
+      </div>
+      <div class="control-row" style="flex-wrap:wrap;gap:6px;">
+        <span class="control-label"><span data-i18n="Current model:">Current model:</span></span>
+        <strong id="model-source" style="font-size:.85rem;">—</strong>
+        <button class="btn" id="btn-default-model" type="button" hidden style="padding:4px 10px;font-size:.78rem;"><span data-i18n="↺ Use default model">↺ Use default model</span></button>
       </div>
     </div>
 
@@ -445,7 +450,7 @@
     <button class="btn" id="aisc-all" disabled data-i18n="Check all stages">Check all stages</button>
     <button class="btn" id="aisc-download" disabled data-i18n="Export AISC report">Export AISC report</button>
     <span id="aisc-summary" role="status" aria-live="polite"></span>
-    <div style="width:100%;font-size:.8rem" id="aisc-basis">ANSI/AISC 360-22 LRFD · 1.4D · t=0.93t nominal · K=1 · L=node-to-node · An=Ag · U=1 · first-order only. Shear, torsion, connections and Chapter C stability are not checked. Green ≤1: within included checks; red >1: exceeds; gray: unavailable. This is not a complete design approval.</div>
+    <div style="width:100%;font-size:.8rem" id="aisc-basis">ANSI/AISC 360-22 LRFD · 1.4D · t=0.93t nominal · K=1 · L=node-to-node · An=Ag · U=1 · first-order only. Shear, torsion, connections and Chapter C stability are not checked. Utilization ≤1: within included checks; >1: exceeds; gray: unavailable. This is not a complete design approval.</div>
   </section>
   <details id="aisc-panel" hidden class="inspector-card"><summary data-i18n="AISC stage and member results">AISC stage and member results</summary><div id="aisc-results" style="overflow:auto;max-height:320px"></div></details>
   <!-- 3D Interactive Viewport -->
@@ -489,6 +494,12 @@
         <button class="btn btn-play" id="download-report" style="padding: 5px 12px; font-size: 0.8rem;" data-i18n-title="Per-bar tension, compression and AISC 360-22 utilization (needs a material grade) and per-node deflection and support type, over all stages" title="Per-bar tension, compression and AISC 360-22 utilization (needs a material grade) and per-node deflection and support type, over all stages"><span data-i18n="📄 Export results report (Excel)">📄 Export results report (Excel)</span></button>
       </div>
     </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 10px;font-size:.82rem;">
+      <span style="font-weight:700;color:var(--gb-darker);"><span data-i18n="Utilization figures for the calculation report">Utilization figures for the calculation report</span></span>
+      <label style="display:inline-flex;gap:6px;align-items:center;"><span data-i18n="Progress (%):">Progress (%):</span>
+        <input id="figures-milestones" type="text" value="50, 67, 83, 95, 100" style="width:150px;padding:5px;border:1px solid var(--gray-29);border-radius:6px;" aria-label="Progress milestones (%)" data-i18n-aria-label="Progress milestones (%)"></label>
+      <button class="btn btn-play" id="download-figures" style="padding:5px 12px;font-size:.8rem;" data-i18n-title="Plan and elevation coloured by AISC utilization at each progress (needs a steel material grade)" title="Plan and elevation coloured by AISC utilization at each progress (needs a steel material grade)"><span data-i18n="🖼️ Export utilization figures (HTML)">🖼️ Export utilization figures (HTML)</span></button>
+    </div>
     <div id="selection-detail" style="font-size: 0.85rem; color: var(--gray-71);">
       <span data-i18n="Click any installed bar in the 3D model to inspect its Axial forces and My/Mz Bending Moments.">Click any installed bar in the 3D model to inspect its Axial forces and My/Mz Bending Moments.</span>
     </div>
@@ -503,6 +514,7 @@
 <div class="charts-grid">
 <figure><figcaption data-i18n="Maximum axial force vs % progress">Maximum axial force vs % progress</figcaption><svg id="chart-force" viewBox="0 0 600 340" role="img" aria-label="Maximum axial force versus assembly progress" data-i18n-aria-label="Maximum axial force versus assembly progress"></svg></figure>
 <figure><figcaption data-i18n="Maximum deflection vs % progress">Maximum deflection vs % progress</figcaption><svg id="chart-displacement" viewBox="0 0 600 340" role="img" aria-label="Maximum deflection versus assembly progress" data-i18n-aria-label="Maximum deflection versus assembly progress"></svg></figure>
+<figure><figcaption data-i18n="Maximum utilization vs % progress">Maximum utilization vs % progress</figcaption><svg id="chart-utilization" viewBox="0 0 600 340" role="img" aria-label="Maximum AISC utilization versus assembly progress" data-i18n-aria-label="Maximum AISC utilization versus assembly progress"></svg></figure>
 </div>
 </div>
 
