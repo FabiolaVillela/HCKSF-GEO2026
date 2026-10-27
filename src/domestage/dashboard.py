@@ -175,23 +175,22 @@ def _stage_view(model: StructureModel, results, last: int, timer) -> None:
     else:
         st.error(f"Stage {sr.stage}: unstable — {r.message}. Forces and displacements are unavailable.")
 
-    left, right = st.columns([3, 2])
-    with left:
-        c1, c2, c3 = st.columns(3)
-        color = c1.selectbox("Color bars by", ["stress", "force", "utilization", "buckling"], key="dash_color")
-        scale = c2.slider("Deformation ×", 0, 5000, 0, step=100, key="dash_scale")
-        ghost = c3.checkbox("Show uninstalled bars", value=True, key="dash_ghost")
-        fig = figure_3d(model, sr, color, scale)
-        if not ghost:
-            fig.data = tuple(t for t in fig.data if getattr(t.line, "color", None) != GHOST)
-        st.plotly_chart(fig, width="stretch")
-    with right:
-        metric = st.selectbox("History metric", ["max_force", "max_stress", "max_disp", "max_buckling"],
-                              key="dash_metric")
-        hist = figure_stage_history(results, metric)
-        hist.add_vline(x=sr.stage, line_dash="dot", line_color=PASTEL)
-        hist.update_layout(height=330, margin=dict(l=0, r=0, t=20, b=0))
-        st.plotly_chart(hist, width="stretch")
+    # The 3D model gets the full page width; the stage history sits below it.
+    c1, c2, c3 = st.columns(3)
+    color = c1.selectbox("Color bars by", ["stress", "force", "utilization", "buckling"], key="dash_color")
+    scale = c2.slider("Deformation ×", 0, 5000, 0, step=100, key="dash_scale")
+    ghost = c3.checkbox("Show uninstalled bars", value=True, key="dash_ghost")
+    fig = figure_3d(model, sr, color, scale)
+    if not ghost:
+        fig.data = tuple(t for t in fig.data if getattr(t.line, "color", None) != GHOST)
+    st.plotly_chart(fig, width="stretch")
+
+    metric = st.selectbox("History metric", ["max_force", "max_stress", "max_disp", "max_buckling"],
+                          key="dash_metric")
+    hist = figure_stage_history(results, metric)
+    hist.add_vline(x=sr.stage, line_dash="dot", line_color=PASTEL)
+    hist.update_layout(height=330, margin=dict(l=0, r=0, t=20, b=0))
+    st.plotly_chart(hist, width="stretch")
 
     bars_tab, nodes_tab, input_tab = st.tabs(["Bar results", "Displacements and reactions", "Input model"])
     with bars_tab:
