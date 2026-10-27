@@ -70,7 +70,6 @@ const spanish={
   "Compression (−)": "Compresión (−)",
   "Tension (+)": "Tracción (+)",
   "Base supports": "Apoyos de base",
-  "Pending (#CACACA)": "Pendiente (#CACACA)",
   "Deflection view": "Vista deformada",
   "🖱️ Drag to rotate · Wheel to zoom · Click member or support to inspect": "🖱️ Arrastra para girar · Rueda para zoom · Clic en barra o apoyo para consultar",
   "Support Reactions Table · Forces (kN) & Moments (kN·m)": "Tabla de reacciones · Fuerzas (kN) y momentos (kN·m)",
