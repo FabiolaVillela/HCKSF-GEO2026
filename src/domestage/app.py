@@ -17,8 +17,11 @@ if str(SOURCE) not in sys.path:
     sys.path.insert(0, str(SOURCE))
 
 PROTOTYPE = Path(__file__).resolve().parents[2] / 'prototypes' / 'rigid-frame'
-if str(PROTOTYPE) not in sys.path:
-    sys.path.insert(0, str(PROTOTYPE))
+# Always put the prototype first: other modules may have added it already, behind the
+# script directory, whose demo.py would then shadow the prototype's demo.py.
+if str(PROTOTYPE) in sys.path:
+    sys.path.remove(str(PROTOTYPE))
+sys.path.insert(0, str(PROTOTYPE))
 from demo import example_model
 from domecalc import Material, Section, analyze, export
 from domecalc.viewer import export_viewer

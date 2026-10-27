@@ -5,13 +5,13 @@ from pathlib import Path
 
 
 def export_viewer(result, path):
-    nodes = [{"p": n["xyz_m"], "s": bool(n["fixed_dofs"]),
+    nodes = [{"p": n["xyz_m"], "label": n.get("source_id", n["id"]), "s": bool(n["fixed_dofs"]),
               "r": [v / 1000 for v in n["reaction"]], "rFixed": all(a in n["fixed_dofs"] for a in (3,4,5))} for n in result["nodes"]]
     bars = []
     for e in result["elements"]:
         stations = e["stations"]
         mid = min(stations, key=lambda s: abs(s["x_m"] - e["length_m"] / 2))
-        bars.append({"i": e["i"], "j": e["j"], "l": e["length_m"], "layer": e["layer"],
+        bars.append({"label": e.get("source_id", e["id"]), "i": e["i"], "j": e["j"], "l": e["length_m"], "layer": e["layer"],
                      "n": [s["N_Vy_Vz_T_My_Mz"][0] / 1000
                            for s in (stations[0], mid, stations[-1])]})
     bounds = [[min(n["p"][i] for n in nodes), max(n["p"][i] for n in nodes)] for i in range(3)]

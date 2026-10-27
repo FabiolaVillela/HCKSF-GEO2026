@@ -95,6 +95,9 @@ def create_dome_3d_figure(
     axial_forces: Optional[pd.Series] = None,
     color_by: str = "axial_force",  # "axial_force" | "stage"
     show_future_bars: bool = True,
+    analysis_stable: bool = True,
+    worker_node: Optional[int] = None,
+    support_label: str = "articulado",
 ) -> go.Figure:
     """Build an interactive 3D wireframe plot representing the current installation stage."""
     fig = go.Figure()
@@ -144,10 +147,14 @@ def create_dome_3d_figure(
         by = [p1[1], p2[1]]
         bz = [p1[2], p2[2]]
 
-        force = axial_forces.get(b_id, 0.0) if axial_forces is not None else 0.0
+        force = axial_forces.get(b_id) if analysis_stable and axial_forces is not None else None
         is_new = b_id in new_set
 
-        if is_new:
+        if force is None:
+            color = "#737373"
+            width = 3.5
+            status_text = "Sin solución de equilibrio"
+        elif is_new:
             color = "#00FF66"  # Highlight neon green
             width = 6.0
             status_text = "NUEVA EN ESTA ETAPA"
@@ -168,8 +175,8 @@ def create_dome_3d_figure(
             f"<b>Barra #{b_id}</b><br>"
             f"Nodos: {bar.node_i} ➔ {bar.node_j}<br>"
             f"Perfil: {bar.profile}<br>"
-            f"Axial: {force/1000:.2f} kN<br>"
-            f"Estado: {status_text}"
+            + (f"Axial: {force/1000:.2f} kN<br>" if force is not None else "Axial: sin solución<br>")
+            + f"Estado: {status_text}"
         )
 
         fig.add_trace(
@@ -198,16 +205,14 @@ def create_dome_3d_figure(
             z=sup_z,
             mode="markers",
             marker=dict(size=5, color="#F59E0B", symbol="diamond"),
-            name="Apoyos articulados",
+            name="Apoyos " + support_label,
             hoverinfo="name",
         )
     )
 
     # 4. Highlight newly installed node / worker position
-    if new_set:
-        last_bar_id = list(new_set)[-1]
-        last_bar = model.bars[model.bars["bar_id"] == last_bar_id].iloc[0]
-        person_node = last_bar.node_j
+    if worker_node is not None and worker_node in nodes_dict:
+        person_node = worker_node
         px, py, pz = nodes_dict[person_node]
         fig.add_trace(
             go.Scatter3d(
@@ -295,3 +300,4 @@ def create_history_chart(stage_history: List[dict], current_stage: int) -> go.Fi
         height=260,
     )
     return fig
+
