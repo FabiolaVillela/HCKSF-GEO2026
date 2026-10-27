@@ -45,7 +45,7 @@ def create_dome_3d_figure(
                     y=ghost_y,
                     z=ghost_z,
                     mode="lines",
-                    line=dict(color="rgba(180, 190, 205, 0.25)", width=1.5, dash="dot"),
+                    line=dict(color="rgba(202, 202, 202, 0.4)", width=1.5, dash="dot"),  # 29% Gray: #CACACA
                     name="Barras pendientes",
                     hoverinfo="none",
                 )
