@@ -1,20 +1,19 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simulador de Montaje de Domo · GEOMETRICA</title>
+  <title>Dome Assembly Simulator · GEOMETRICA</title>
   <style>
     :root {
-      /* Geometrica Brand Colors */
-      --gb-approximate: #001B96;  /* 0, 27, 150 */
-      --gb-darker: #0B2265;       /* 11, 34, 101 */
-      --gb-pastel: #5A85D7;       /* 90, 133, 215 */
-      --gb-pastel-light: #B3C8E6; /* 179, 200, 230 */
+      /* Geometrica Official Brand Colors */
+      --gb-approximate: #001B96;  /* Primary Blue (0, 27, 150) */
+      --gb-darker: #0B2265;       /* Navy Darker (11, 34, 101) */
+      --gb-pastel: #5A85D7;       /* Pastel Blue (90, 133, 215) */
+      --gb-pastel-light: #B3C8E6; /* Light Blue (179, 200, 230) */
       --black: #000000;
-      --gray-71: #4B4B4B;         /* 75, 75, 75 */
-      --gray-29: #CACACA;         /* 202, 202, 202 */
-      --bg-white: #FFFFFF;
+      --gray-71: #4B4B4B;         /* Dark Gray (75, 75, 75) */
+      --gray-29: #CACACA;         /* Light Gray (202, 202, 202) */
       --bg-page: #F8FAFC;
       --bg-card: #FFFFFF;
       --border-light: #E2E8F0;
@@ -24,18 +23,19 @@
       --highlight: #00C853;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background-color: var(--bg-page); color: var(--black); padding: 18px 24px; min-height: 100vh; }
+    body { background-color: var(--bg-page); color: var(--black); padding: 20px 28px; min-height: 100vh; }
     
+    /* Top Header */
     header {
       background: linear-gradient(90deg, var(--gb-darker) 0%, var(--gb-approximate) 100%);
       padding: 18px 24px;
       border-radius: 12px;
-      margin-bottom: 16px;
+      margin-bottom: 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       border-left: 8px solid var(--gb-pastel);
-      box-shadow: 0 4px 16px rgba(0, 27, 150, 0.15);
+      box-shadow: 0 4px 16px rgba(0, 27, 150, 0.12);
     }
     h1 { font-size: 1.45rem; font-weight: 700; color: #FFFFFF; display: flex; align-items: center; gap: 10px; }
     .header-sub { font-size: 0.85rem; color: var(--gb-pastel-light); margin-top: 4px; }
@@ -43,23 +43,50 @@
     .badge { padding: 6px 14px; border-radius: 999px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
     .badge-stable { background: #DCFCE7; color: #166534; border: 1px solid #86EFAC; }
     .badge-unstable { background: #FEE2E2; color: #991B1B; border: 1px solid #FCA5A5; }
+    .badge-pending { background: #E2E8F0; color: var(--gray-71); border: 1px solid var(--gray-29); }
 
-    /* Configuration Bar: Perfiles, Materiales y Conexiones */
-    .config-strip {
+    /* Sectioned Cards Grid for Configuration */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .panel-card {
       background: var(--bg-card);
       border: 1px solid var(--border-light);
       border-radius: 12px;
-      padding: 14px 20px;
-      margin-bottom: 16px;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 18px;
+      padding: 16px 20px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
-    .config-group { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
-    .config-label { color: var(--gb-darker); font-weight: 700; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; }
-    select, input[type=file] {
+    .panel-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--gb-darker);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-bottom: 1px solid var(--border-light);
+      padding-bottom: 8px;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 0.85rem;
+    }
+    .control-label {
+      color: var(--gray-71);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    select, input[type=number], input[type=file] {
       background: #F1F5F9;
       color: var(--black);
       border: 1px solid var(--gray-29);
@@ -68,8 +95,35 @@
       font-size: 0.82rem;
       outline: none;
       font-weight: 500;
+      max-width: 190px;
     }
-    select:focus { border-color: var(--gb-approximate); }
+    select:focus, input:focus { border-color: var(--gb-approximate); }
+
+    /* Dedicated New Bars Highlight Banner */
+    .new-bars-card {
+      background: #FFFFFF;
+      border: 1px solid #86EFAC;
+      border-left: 6px solid var(--highlight);
+      border-radius: 10px;
+      padding: 12px 18px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0, 200, 83, 0.08);
+    }
+    .new-bars-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #166534;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .new-bars-badge {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #059669;
+    }
 
     /* Timeline & Progress Bar */
     .timeline-card {
@@ -77,7 +131,7 @@
       border: 1px solid var(--border-light);
       border-radius: 12px;
       padding: 16px 20px;
-      margin-bottom: 16px;
+      margin-bottom: 20px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.05);
     }
     .progress-header { display: flex; justify-content: space-between; font-size: 0.92rem; margin-bottom: 8px; color: var(--gray-71); }
@@ -86,9 +140,11 @@
 
     .slider-row { display: flex; align-items: center; gap: 14px; }
     .btn { background: #F1F5F9; color: var(--gb-darker); border: 1px solid var(--gray-29); border-radius: 8px; padding: 8px 16px; cursor: pointer; font-size: 0.85rem; font-weight: 700; transition: all 0.2s; }
-    .btn:hover { background: var(--gb-pastel-light); border-color: var(--gb-pastel); color: var(--gb-darker); }
+    .btn:hover { background: var(--gb-pastel-light); border-color: var(--gb-pastel); }
     .btn-play { background: var(--gb-approximate); border-color: var(--gb-darker); color: #FFFFFF; }
     .btn-play:hover { background: var(--gb-darker); }
+    .btn-csv { background: #FFFFFF; border: 1px solid var(--gb-pastel); color: var(--gb-approximate); padding: 5px 12px; font-size: 0.78rem; border-radius: 6px; cursor: pointer; font-weight: 600; }
+    .btn-csv:hover { background: var(--gb-pastel-light); }
     
     input[type=range] {
       flex: 1; height: 8px; border-radius: 4px; background: #E2E8F0; outline: none; -webkit-appearance: none; cursor: pointer;
@@ -97,11 +153,26 @@
       -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--gb-approximate); border: 3px solid #FFFFFF; cursor: grab; box-shadow: 0 2px 6px rgba(0, 27, 150, 0.4);
     }
 
-    /* Real-time Metrics */
-    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    /* PR 11 Options Strip: Deformation & Reaction toggles */
+    .viz-options-strip {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: 10px;
+      padding: 12px 18px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.84rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+    }
+
+    /* Real-time Metrics Grid */
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 20px; }
     .metric { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 10px; padding: 14px 18px; box-shadow: 0 2px 6px rgba(0,0,0,0.03); }
-    .metric-label { font-size: 0.75rem; text-transform: uppercase; color: var(--gray-71); margin-bottom: 4px; font-weight: 700; }
-    .metric-value { font-size: 1.4rem; font-weight: 700; color: var(--black); }
+    .metric-label { font-size: 0.75rem; text-transform: uppercase; color: var(--gray-71); margin-bottom: 4px; font-weight: 700; letter-spacing: 0.5px; }
+    .metric-value { font-size: 1.45rem; font-weight: 700; color: var(--black); }
     .val-tension { color: var(--gb-approximate) !important; }
     .val-compression { color: var(--compression) !important; }
 
@@ -113,12 +184,13 @@
       overflow: hidden;
       position: relative;
       box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+      margin-bottom: 20px;
     }
-    canvas { width: 100%; height: 530px; display: block; cursor: grab; background: #FFFFFF; }
+    canvas { width: 100%; height: 540px; display: block; cursor: grab; background: #FFFFFF; }
     canvas:active { cursor: grabbing; }
 
     .canvas-overlay {
-      position: absolute; top: 14px; left: 16px; background: rgba(255, 255, 255, 0.92);
+      position: absolute; top: 14px; left: 16px; background: rgba(255, 255, 255, 0.94);
       backdrop-filter: blur(8px); padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-light); font-size: 0.8rem;
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
@@ -126,47 +198,228 @@
     .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
 
     .instructions {
-      position: absolute; bottom: 12px; right: 14px; background: rgba(255, 255, 255, 0.9);
+      position: absolute; bottom: 12px; right: 14px; background: rgba(255, 255, 255, 0.92);
       padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; color: var(--gray-71); pointer-events: none; border: 1px solid var(--border-light);
     }
+
+    /* Element Inspector Table */
+    .inspector-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
+    th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border-light); }
+    th { font-weight: 700; color: var(--gb-darker); background: #F8FAFC; }
+    
+    #message { margin: 10px 0; font-size: 0.85rem; color: var(--gray-71); }
   </style>
 </head>
 <body>
-<header><div><h1>🏗️ GEOMETRICA · Montaje de Domos</h1><div class="header-sub">Motor estructural · peso propio y carga de instalador · equilibrio por etapa</div></div><div id="status-badge" class="badge">PENDIENTE</div></header>
-<div class="config-strip">
-<label class="config-group">Perfil HSS <select id="sel-profile" aria-label="Perfil HSS"></select></label>
-<label class="config-group">Material <select id="sel-material" aria-label="Material"></select></label>
-<label class="config-group">Conexiones <select id="sel-connection"><option value="articulada">Articuladas · axial</option><option value="empotrada">Empotradas · pórtico</option></select></label>
-<label class="config-group">Apoyos <select id="sel-support"><option value="articulado">Articulados</option><option value="empotrado">Empotrados</option></select></label>
-<label class="config-group">Barras por etapa <select id="sel-step"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></label>
-<label class="config-group">Instalador + herramientas (kg) <input id="worker-kg" type="number" min="0" max="10000" step="10" value="100"></label>
-<label class="config-group">Unidades DXF <select id="dxf-units"><option value="auto">Del archivo</option><option>mm</option><option>cm</option><option>m</option><option value="in">pulgadas</option><option value="ft">pies</option></select></label>
-<label class="config-group">Tolerancia (mm) <input id="dxf-tolerance" type="number" min="0.0001" max="100" value="0.001" step="0.001"></label>
-<label class="config-group">Importar DXF <input type="file" id="dxf-file-input" accept=".dxf"></label>
-</div>
-<div id="message" role="status" aria-live="polite" style="margin:12px 0;white-space:pre-wrap">Conectando con el motor…</div>
-<details><summary>Revisar apoyos y secuencia</summary><p>Se proponen los nodos de cota mínima. Los cruces interiores no crean uniones. El orden de montaje se basa en la secuencia del modelo o en altura media para DXF.</p><label>Nodos de apoyo <select id="support-nodes" multiple size="4" aria-label="Nodos de apoyo"></select></label><button class="btn" id="apply-supports">Aplicar apoyos</button><pre id="import-report"></pre></details>
-<div class="timeline-card">
-<div class="progress-header"><span>Progreso: <strong id="progress-text">0%</strong></span><span>Barras: <strong id="active-bars-count">0</strong> / <span id="total-bars-count">0</span></span></div>
-<div class="progress-bar-bg"><div id="progress-fill" class="progress-bar-fill"></div></div>
-<div class="slider-row"><button id="btn-play" class="btn btn-play">▶ Recorrer etapas</button><button id="btn-prev" class="btn" aria-label="Etapa anterior">◀</button><input type="range" id="stage-slider" min="0" max="1" value="0" aria-label="Etapa de montaje"><button id="btn-next" class="btn" aria-label="Etapa siguiente">▶</button><span>Etapa <strong id="stage-num">0</strong> / <span id="last-stage">0</span></span></div>
-</div>
-<div class="metrics-grid">
-<div class="metric"><div class="metric-label">Barras nuevas</div><div id="newest-bar-text">—</div></div>
-<div class="metric"><div class="metric-label">Tracción máxima</div><div class="metric-value val-tension" id="max-tension">—</div></div>
-<div class="metric"><div class="metric-label">Compresión máxima</div><div class="metric-value val-compression" id="max-compression">—</div></div>
-<div class="metric"><div class="metric-label">Peso propio instalado</div><div id="installed-weight">—</div></div>
-<div class="metric"><div class="metric-label">Carga del instalador</div><div id="worker-load">—</div></div>
-<div class="metric"><div class="metric-label">Desplazamiento máximo</div><div id="max-displacement">—</div></div>
-</div>
-<div class="viewport-card"><canvas id="viewport" role="img" aria-label="Estructura de la etapa. Arrastrar para girar, rueda para zoom y clic para seleccionar barra o apoyo."></canvas><div class="canvas-overlay">Verde: nueva · rojo: compresión · azul: tracción · gris continuo: sin solución · gris punteado: pendiente · naranja: apoyo</div><div class="instructions">Arrastra para girar · rueda para zoom · clic para consultar</div></div>
-<div class="config-strip" style="margin-top:16px"><label>Seleccionar <select id="element-select" aria-label="Seleccionar barra o apoyo"><option value="">Sin selección</option></select></label><button class="btn" id="download-stage" disabled>Descargar etapa JSON</button></div>
-<div id="selection-detail" aria-live="polite">Selecciona una barra instalada o un apoyo.</div>
-<details style="margin-top:16px"><summary>Historial de etapas calculadas</summary><div id="stage-history"></div></details>
-<p style="margin:16px 0;color:var(--gray-71)">Análisis elástico lineal independiente por etapa. Un solo instalador en el nodo j de la última barra nueva; etapa 0 sin instalador. No incluye deformaciones acumuladas de montaje, pandeo ni comprobación de resistencia.</p>
-<style>
-input[type=number]{width:90px;padding:6px;border:1px solid var(--gray-29);border-radius:6px} .config-strip select{max-width:100%} .config-group{flex-wrap:wrap} table{width:100%;border-collapse:collapse}th,td{padding:8px;text-align:left;border-bottom:1px solid var(--border-light)} #selection-detail{overflow-wrap:anywhere}header{gap:12px;flex-wrap:wrap}.badge-pending{background:var(--gray-29);color:var(--black)}#import-report{white-space:pre-wrap;max-height:200px;overflow:auto} #support-nodes{max-width:100%} @media(max-width:600px){body{padding:10px}h1{font-size:1.1rem}.config-strip{padding:12px;gap:12px}.config-group{width:100%}.slider-row{gap:6px;flex-wrap:wrap}.slider-row input{min-width:130px}canvas{height:400px}.canvas-overlay{font-size:.7rem;left:8px;right:8px}.instructions{left:8px;right:8px}.metric{padding:10px} .progress-header{gap:10px;flex-wrap:wrap}}
-</style>
-<script>if(location.protocol==='file:'){document.getElementById('status-badge').textContent='MOTOR NO DISPONIBLE';document.getElementById('message').textContent='Para calcular etapas inicia: PYTHONPATH=src python -m domestage.server. Abre la dirección local que indique el programa.';}</script>
-<script src="/simulator.js" onerror="document.getElementById('message').textContent='No se pudo cargar el motor. Inicia PYTHONPATH=src python -m domestage.server y abre su dirección local.'"></script>
-</body></html>
+
+  <header>
+    <div>
+      <h1>🏗️ GEOMETRICA · Steel Dome Construction Analysis</h1>
+      <div class="header-sub">Stage-by-stage structural simulation · Self-weight linear elastic equilibrium</div>
+    </div>
+    <div id="status-badge" class="badge badge-pending">INITIALIZING</div>
+  </header>
+
+  <!-- Sectioned Control Cards Grid -->
+  <div class="controls-grid">
+    <!-- Card 1: CAD & Geometry -->
+    <div class="panel-card">
+      <div class="panel-title">📁 1. CAD Geometry & DXF</div>
+      <div class="control-row">
+        <span class="control-label">Upload DXF Wireframe:</span>
+        <input type="file" id="dxf-file-input" accept=".dxf">
+      </div>
+      <div class="control-row">
+        <span class="control-label">Drawing Units:</span>
+        <select id="dxf-units">
+          <option value="auto">Auto-detect</option>
+          <option value="mm">Millimeters (mm)</option>
+          <option value="m">Meters (m)</option>
+          <option value="in">Inches (in)</option>
+          <option value="ft">Feet (ft)</option>
+        </select>
+      </div>
+      <div class="control-row">
+        <span class="control-label">Merge Tolerance (mm):</span>
+        <input id="dxf-tolerance" type="number" min="0.0001" max="50" value="1.0" step="0.1">
+      </div>
+    </div>
+
+    <!-- Card 2: Materials & Profiles -->
+    <div class="panel-card">
+      <div class="panel-title">⚙️ 2. Structural Properties</div>
+      <div class="control-row">
+        <span class="control-label">Steel Material:</span>
+        <select id="sel-material"></select>
+      </div>
+      <div class="control-row">
+        <span class="control-label">HSS Pipe Section:</span>
+        <select id="sel-profile"></select>
+      </div>
+      <div class="control-row">
+        <span class="control-label">Bars Per Stage Step:</span>
+        <select id="sel-step">
+          <option value="1">1 bar per stage</option>
+          <option value="2" selected>2 bars per stage</option>
+          <option value="3">3 bars per stage</option>
+          <option value="4">4 bars per stage</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Card 3: Boundary & Connections -->
+    <div class="panel-card">
+      <div class="panel-title">🔗 3. Connections & Supports</div>
+      <div class="control-row">
+        <span class="control-label">Bar Connections:</span>
+        <select id="sel-connection">
+          <option value="articulada">Pinned · Axial Truss (3 DOF)</option>
+          <option value="empotrada" selected>Rigid · Frame with Moments (6 DOF)</option>
+        </select>
+      </div>
+      <div class="control-row">
+        <span class="control-label">Base Supports Default:</span>
+        <select id="sel-support">
+          <option value="articulado">Pinned (Restrain Ux, Uy, Uz)</option>
+          <option value="empotrado" selected>Fixed (Restrain All 6 DOFs)</option>
+        </select>
+      </div>
+      <div class="control-row" style="margin-top: 4px;">
+        <span class="control-label">Node Connection Schedule:</span>
+        <div style="display: flex; gap: 8px;">
+          <button id="btn-export-csv" class="btn-csv" title="Export CSV table with support types per node">⬇ Export CSV</button>
+          <label class="btn-csv" style="display: inline-block; cursor: pointer;" title="Import edited CSV">
+            ⬆ Import CSV
+            <input type="file" id="csv-import-input" accept=".csv" style="display: none;">
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Re-located New Bars Banner -->
+  <div class="new-bars-card">
+    <div>
+      <div class="new-bars-title">Current Installation Step · Elements Added</div>
+      <div style="font-size: 0.8rem; color: var(--gray-71); margin-top: 2px;">Active members contributing new stiffness and weight in this stage</div>
+    </div>
+    <div id="newest-bar-text" class="new-bars-badge">Stage 0 · Base Installed</div>
+  </div>
+
+  <!-- Timeline & Progress Bar -->
+  <div class="timeline-card">
+    <div class="progress-header">
+      <span><strong>Dome Assembly Progress:</strong> <strong id="progress-text" style="color:var(--gb-approximate);">0%</strong></span>
+      <span>Active Bars: <strong id="active-bars-count">0</strong> / <span id="total-bars-count">0</span></span>
+    </div>
+    <div class="progress-bar-bg"><div id="progress-fill" class="progress-bar-fill"></div></div>
+    <div class="slider-row">
+      <button id="btn-play" class="btn btn-play">▶ Play Assembly</button>
+      <button id="btn-prev" class="btn" aria-label="Previous stage">◀</button>
+      <input type="range" id="stage-slider" min="0" max="1" value="0">
+      <button id="btn-next" class="btn" aria-label="Next stage">▶</button>
+      <span style="font-size: 0.9rem; min-width: 100px; font-weight: 700;">Stage <strong id="stage-num" style="color:var(--gb-approximate);">0</strong> / <span id="last-stage">0</span></span>
+    </div>
+  </div>
+
+  <div id="message" role="status" aria-live="polite">Connecting to calculation engine…</div>
+
+  <!-- Real-Time Metrics (Pure self-weight) -->
+  <div class="metrics-grid">
+    <div class="metric">
+      <div class="metric-label">Max Tension (+T)</div>
+      <div class="metric-value val-tension" id="max-tension">—</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Max Compression (−C)</div>
+      <div class="metric-value val-compression" id="max-compression">—</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Installed Structure Weight</div>
+      <div class="metric-value" id="installed-weight" style="font-size: 1.25rem;">—</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Max Deflection</div>
+      <div class="metric-value" id="max-displacement" style="font-size: 1.25rem; color: var(--gb-darker);">—</div>
+    </div>
+  </div>
+
+  <!-- PR 11 Feature: Amplified Deformation & Support Reactions Toggles -->
+  <div class="viz-options-strip" id="deformation-controls">
+    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+      <input id="show-deformation" type="checkbox" disabled> <strong>Show Amplified Nodal Deflection</strong>
+    </label>
+    <label style="display:flex; align-items:center; gap:6px;">
+      Scale factor × <input id="deformation-factor" type="number" min="0" max="100000" step="1" value="10" style="width:75px;" disabled>
+    </label>
+    <label style="display:flex; align-items:center; gap:6px; margin-left:14px; cursor:pointer;">
+      <input id="show-reactions" type="checkbox" disabled> <strong>Show Support Reaction Vectors</strong>
+    </label>
+    <label style="display:flex; align-items:center; gap:6px;">
+      Reactions:
+      <select id="reaction-mode" disabled style="max-width:160px;">
+        <option value="total">Resultant Total</option>
+        <option value="components">XYZ Components</option>
+        <option value="cylindrical">Radial / Tangential / Vertical</option>
+      </select>
+    </label>
+    <span id="reaction-legend" hidden><span style="color:#15803D">X · Green</span> / <span style="color:#DC2626">Y · Red</span> / <span style="color:#2563EB">Z · Blue</span></span>
+    <span id="reaction-note" role="status" aria-live="polite" style="color:var(--gray-71);"></span>
+    <span id="deformation-note" role="status" aria-live="polite" style="color:var(--gray-71); margin-left:auto;">Deflection view off (values are true scale).</span>
+  </div>
+
+  <!-- 3D Interactive Viewport -->
+  <div class="viewport-card">
+    <canvas id="viewport" role="img" aria-label="3D structure viewport. Drag to orbit, wheel to zoom, click to inspect."></canvas>
+    <div class="canvas-overlay">
+      <div class="legend-item"><span class="legend-dot" style="background:#00C853;"></span> Newly installed</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#EF4444;"></span> Compression (−)</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#001B96;"></span> Tension (+)</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#F59E0B;"></span> Base supports</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#CACACA;"></span> Pending (#CACACA)</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#7C3AED;"></span> Deflection view</div>
+    </div>
+    <div class="instructions">🖱️ Drag to rotate · Wheel to zoom · Click member or support to inspect</div>
+  </div>
+
+  <details id="reaction-panel" hidden style="margin-bottom:20px; font-size:0.85rem;">
+    <summary style="font-weight:700; color:var(--gb-darker); cursor:pointer;">Support Reactions Table · Forces (kN) & Moments (kN·m)</summary>
+    <div id="reaction-table" style="overflow:auto; margin-top:8px;"></div>
+  </details>
+
+  <!-- Element & Support Inspector -->
+  <div class="inspector-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <div style="font-size: 0.9rem; font-weight: 700; color: var(--gb-darker); text-transform: uppercase;">
+        Member & Node Detail Inspector
+      </div>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <select id="element-select" style="max-width: 200px;">
+          <option value="">Click member or select here…</option>
+        </select>
+        <button class="btn" id="download-stage" style="padding: 5px 12px; font-size: 0.8rem;" disabled>Export Stage JSON</button>
+      </div>
+    </div>
+    <div id="selection-detail" style="font-size: 0.85rem; color: var(--gray-71);">
+      Click any installed bar in the 3D model to inspect its Axial forces and My/Mz Bending Moments.
+    </div>
+  </div>
+
+  <details style="margin-bottom: 24px; font-size: 0.85rem;">
+    <summary style="font-weight: 700; color: var(--gb-darker); cursor: pointer;">Detailed Stage Calculation History Table</summary>
+    <div id="stage-history" style="margin-top: 10px; overflow-x: auto;"></div>
+  </details>
+
+  <script src="/deformation.js"></script>
+  <script src="/reactions.js"></script>
+  <script src="/simulator.js"></script>
+</body>
+</html>
