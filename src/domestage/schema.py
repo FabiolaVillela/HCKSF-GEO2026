@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 import pandas as pd
+import numpy as np
 
 G = 9.81  # m/s^2
 
@@ -84,9 +85,60 @@ def validate_model(model: StructureModel) -> List[str]:
         problems.append("bars: zero-length bar (node_i == node_j)")
     unknown_prof = set(model.bars["profile"]) - set(model.profiles["profile"])
     if unknown_prof:
-        problems.append(f"bars: unknown profiles {sorted(unknown_prof)}")
+        problems.append(f"bars: unknown profiles {sorted(map(str, unknown_prof))}")
     if not model.supports["node_id"].isin(node_ids).all():
         problems.append("supports: unknown node_id")
     if len(model.supports) == 0:
         problems.append("supports: at least one support is required")
+    if model.nodes.empty or model.bars.empty or model.profiles.empty:
+        problems.append("nodes, bars and profiles must be nonempty")
+    for name, df in [("nodes", model.nodes), ("bars", model.bars),
+                     ("profiles", model.profiles), ("supports", model.supports),
+                     ("loads", model.loads)]:
+        if df.isna().any().any():
+            problems.append(f"{name}: missing values")
+    if model.profiles.profile.duplicated().any():
+        problems.append("profiles: duplicated profile")
+    if model.supports.node_id.duplicated().any():
+        problems.append("supports: duplicated node_id")
+    if not model.loads.node_id.isin(node_ids).all():
+        problems.append("loads: unknown node_id")
+    if not model.loads.stage.isin(set(model.bars.stage) | {0}).all():
+        problems.append("loads: source stage is not present in bars")
+    for name, df, cols in [
+        ("nodes", model.nodes, ["node_id", "x", "y", "z"]),
+        ("bars", model.bars, ["bar_id", "node_i", "node_j", "stage"]),
+        ("profiles", model.profiles, PROFILES_COLS[1:]),
+        ("loads", model.loads, LOADS_COLS),
+    ]:
+        try:
+            numeric = df[cols].to_numpy(dtype=float)
+            if not np.isfinite(numeric).all():
+                problems.append(f"{name}: values must be finite")
+            # Numeric strings are not part of the shared numeric table contract.
+            if any(not pd.api.types.is_numeric_dtype(df[c]) for c in cols) and not df.empty:
+                problems.append(f"{name}: numeric columns required")
+        except (ValueError, TypeError):
+            problems.append(f"{name}: invalid numeric values")
+    try:
+        if (model.profiles[["area_m2", "E_pa"]] <= 0).any().any():
+            problems.append("profiles: area and elastic modulus must be positive")
+        if (model.profiles[["inertia_m4", "density_kgm3"]] < 0).any().any():
+            problems.append("profiles: inertia and density must be nonnegative")
+        for name, stages in [("bars", model.bars.stage), ("loads", model.loads.stage)]:
+            if ((stages < 0) | (stages % 1 != 0)).any():
+                problems.append(f"{name}: stages must be nonnegative integers")
+        for df, cols in [(model.nodes, ["node_id"]), (model.bars, ["bar_id", "node_i", "node_j"]),
+                         (model.supports, ["node_id"]), (model.loads, ["node_id"])]:
+            if (df[cols].astype(float) % 1 != 0).any().any():
+                problems.append("IDs must be integers")
+    except (ValueError, TypeError):
+        problems.append("Invalid profile properties, IDs or stages")
+    if not model.supports[["fix_x", "fix_y", "fix_z"]].isin([True, False, 0, 1]).all().all():
+        problems.append("supports: restraints must be booleans or 0/1")
+    try:
+        if not np.isfinite(model.criteria["yield_pa"]) or model.criteria["yield_pa"] <= 0:
+            problems.append("criteria: yield_pa must be positive and finite")
+    except (KeyError, TypeError):
+        problems.append("criteria: yield_pa is required and must be numeric")
     return problems

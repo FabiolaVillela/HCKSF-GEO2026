@@ -1,146 +1,144 @@
-"""Dashboard con equilibrio real por etapa. Ejecutar desde la raíz del repo."""
+"""Streamlit interface for the independent rigid-frame demo."""
 from __future__ import annotations
+
 import io
-import json
-from pathlib import Path
 import sys
 import tempfile
+import zipfile
+from pathlib import Path
 
-ROOT=Path(__file__).resolve().parents[2]
-if str(ROOT/'src') not in sys.path: sys.path.insert(0,str(ROOT/'src'))
-import streamlit as st
-import streamlit.components.v1 as components
+import numpy as np
 import pandas as pd
-from domestage.assembly import (catalog,geometry_from_dxf,geometry_from_structure,stage_plan,solve_stage)
-from domestage.demo_model import generate_demo_dome
-from domestage.default_model import DEFAULT_NAME, default_model
-from domestage.design_dashboard import select_design,render_design
-from domecalc.importer import declared_units,UNITS
+import plotly.graph_objects as go
+import streamlit as st
+
+SOURCE = Path(__file__).resolve().parents[1]
+if str(SOURCE) not in sys.path:
+    sys.path.insert(0, str(SOURCE))
+
+PROTOTYPE = Path(__file__).resolve().parents[2] / 'prototypes' / 'rigid-frame'
+# Always put the prototype first: other modules may have added it already, behind the
+# script directory, whose demo.py would then shadow the prototype's demo.py.
+if str(PROTOTYPE) in sys.path:
+    sys.path.remove(str(PROTOTYPE))
+sys.path.insert(0, str(PROTOTYPE))
+from demo import example_model
+from domecalc import Material, Section, analyze, export
 from domecalc.viewer import export_viewer
 
-st.set_page_config(page_title='DomeStage · motor estructural',layout='wide')
-st.title('GEOMETRICA · Montaje de domos')
-st.caption('Equilibrio elástico lineal real por etapa · peso propio y un instalador')
 
-@st.cache_data(show_spinner=False,max_entries=4)
-def import_geometry(content,units,tolerance):
-    return geometry_from_dxf(content,units,tolerance)
+@st.cache_data(show_spinner=False)
+def calculate(diameter, thickness, modulus):
+    return analyze(example_model(), Material(E=modulus * 1e9),
+                   Section.circular(diameter / 1000, thickness / 1000))
 
-@st.cache_data(show_spinner=False,max_entries=32)
-def calculate(geometry,config,stage):
-    # Todos los parámetros participan en la clave de caché, incluida la geometría.
-    return solve_stage(geometry,config,stage)
 
-with st.sidebar:
-    default_label=f'Modelo por defecto ({DEFAULT_NAME})'
-    source=st.radio('Fuente del modelo',[default_label,'Importar Archivo DXF','Generador Sintético Paramétrico'])
-    if source==default_label:
-        default=default_model()
-        geometry=default['geometry']
-        st.caption(f"{default['file']} · {default['nodes']} nodos · {default['bars']} barras · {default['supports']} apoyos")
-    elif source=='Generador Sintético Paramétrico':
-        rings=st.slider('Número de anillos',2,8,4)
-        sides=st.slider('Lados por anillo',6,24,12,2)
-        radius=st.number_input('Radio (m)',min_value=.1,value=6.)
-        height=st.number_input('Altura (m)',min_value=.1,value=3.2)
-        model=generate_demo_dome(rings,sides,radius,height)
-        geometry=geometry_from_structure(model)
-    else:  # Importar Archivo DXF
-        upload=st.file_uploader('Subir DXF',type=['dxf'])
-        if upload is None:
-            st.info('Carga un DXF para comenzar.');st.stop()
-        try:
-            content=upload.getvalue();detected=declared_units(content)
-            choices=['Seleccionar…',*UNITS]
-            units=st.selectbox('Unidades',choices,index=choices.index(detected) if detected else 0)
-            tolerance=st.number_input('Tolerancia (mm)',min_value=.0001,value=.001,format='%.4f')/1000
-            if units=='Seleccionar…':st.stop()
-            geometry,report=import_geometry(content,units,tolerance)
-        except ValueError as exc:
-            st.error(str(exc));st.stop()
-        with st.expander('Diagnóstico DXF'):st.json(report)
-    c=catalog()
-    material=st.selectbox('Material',c['materials'])
-    design=select_design(material)
-    profile=st.selectbox('Perfil HSS',c['profiles'],index=2)
-    connection=st.radio('Conexiones',['articulada','empotrada'],format_func=lambda s:s.capitalize())
-    support=st.radio('Apoyos',['articulado','empotrado'],format_func=lambda s:s.capitalize())
-    geometry['support_nodes']=st.multiselect('Nodos de apoyo',[n['id'] for n in geometry['nodes']],default=geometry['support_nodes'])
-    step=st.selectbox('Barras por etapa',[1,2,3,4],index=1)
-    worker=st.number_input('Instalador y herramientas (kg)',min_value=0.,max_value=10000.,value=100.,step=10.)
-    st.caption('Un instalador en nodo j de la última barra nueva; no se aplica en etapa 0.')
-config=dict(material=material,profile=profile,connection=connection,support=support,bars_per_step=step,worker_kg=worker)
-try:
-    plan=stage_plan(geometry,step)
-except ValueError as exc:
-    st.error(str(exc));st.stop()
-# Mantener la posición solo mientras la secuencia y propiedades no cambien.
-signature=json.dumps([geometry,config],sort_keys=True)
-if st.session_state.get('geometry_signature')!=signature:
-    st.session_state['geometry_signature']=signature
-    st.session_state['stage_idx']=0
-    st.session_state['visited']={}
-max_stage=len(plan)-1
-if max_stage:
-    stage=st.slider('Etapa de montaje',0,max_stage,key='stage_idx')
-else:
-    stage=0;st.write('Etapa 0 · todas las barras están instaladas en la base.')
-with st.spinner('Calculando equilibrio de la etapa…'):
-    try:result=calculate(geometry,config,stage)
-    except ValueError as exc:st.error(str(exc));st.stop()
-st.session_state['visited'][stage]=result
-st.progress(result['progress_pct']/100)
-st.write(f'Barras instaladas: {result["active_count"]} / {result["total_bars"]} · nuevas: {result["new_bar_ids"]}')
-if result['stable']:
-    st.success('Equilibrio calculado: '+result['message'])
-elif result['status']=='empty':
-    st.info(result['message'])
-else:
-    st.error('Etapa sin solución: '+result['message'])
-cols=st.columns(4)
-cols[0].metric('Peso propio instalado',f'{result["mass_kg"]*9.80665/1000:.3f} kN')
-cols[1].metric('Carga instalador',f'{result["worker_load_N"]/1000:.3f} kN')
-cols[2].metric('Tracción máxima',f'{result["max_tension_kn"]:.3f} kN' if result['stable'] else '—')
-cols[3].metric('Compresión máxima',f'{result["max_compression_kn"]:.3f} kN' if result['stable'] else '—')
-# Preferencias de vista: fuera de config y de la clave del cálculo.
-show_deformed=st.checkbox('Mostrar deformada nodal',value=False,disabled=not bool(result['stable']),key='show_deformed')
-deformation_scale=st.number_input('Factor visual de deformada',min_value=0.,max_value=100000.,value=10.,step=1.,disabled=not (show_deformed and result['stable']),key='deformation_scale')
-if show_deformed and result['stable']:
-    real=result['max_displacement_mm']
-    st.caption(f'Máximo real: {real:.3f} mm → dibujado: {real*deformation_scale:.3f} mm (×{deformation_scale:g}). La referencia permanece visible; se unen los nodos desplazados con barras rectas.')
-elif not result['stable']:
-    st.caption('La deformada no está disponible sin equilibrio de la etapa.')
-utilizations=render_design(result,geometry,config,design)
-# Mantener el visualizador del equipo si Plotly está instalado.
-try:
-    from domestage.viz import create_dome_3d_figure,create_history_chart
-except ImportError:
-    create_dome_3d_figure=None
-if create_dome_3d_figure:
-    from domestage.schema import StructureModel
-    nodes=pd.DataFrame([(n['id'],n['x'],n['y'],n['z']) for n in geometry['nodes']],columns=['node_id','x','y','z'])
-    bars=pd.DataFrame([(b['id'],b['i'],b['j'],profile,0) for b in geometry['bars']],columns=['bar_id','node_i','node_j','profile','stage'])
-    supports=pd.DataFrame([(n,True,True,True) for n in geometry['support_nodes']],columns=['node_id','fix_x','fix_y','fix_z'])
-    view_model=StructureModel(nodes,bars,pd.DataFrame(),supports,pd.DataFrame())
-    fig=create_dome_3d_figure(view_model,result['active_bar_ids'],result['new_bar_ids'],
-                              pd.Series({int(k):v for k,v in result['forces'].items()},dtype=float) if result['stable'] else None,
-                              analysis_stable=result['stable'] is True,worker_node=result['worker_node'],support_label=support,
-                              displacements={n['node_id']:n['values'] for n in result['displacements']},
-                              show_deformed=show_deformed and bool(result['stable']),deformation_scale=deformation_scale,utilizations=utilizations)
-    st.plotly_chart(fig,use_container_width=True)
-if result['stable']:
+@st.cache_data(show_spinner=False)
+def download_bundle(result):
     with tempfile.TemporaryDirectory() as directory:
-        viewer=export_viewer(result['solution'],Path(directory)/'etapa.html',show_deformed=show_deformed,deformation_scale=deformation_scale).read_text()
-    if not create_dome_3d_figure:components.html(viewer,height=880,scrolling=True)
-    st.download_button('Descargar visor de la etapa',viewer,f'etapa-{stage}.html','text/html')
-    options=[f'Barra {b}' for b in result['active_bar_ids']]+[f'Apoyo {r["node_id"]}' for r in result['reactions']]
-    selection=st.selectbox('Consultar barra o apoyo',options)
-    if selection.startswith('Barra '):
-        bid=int(selection.split()[-1]);element=next(e for e in result['elements'] if e['id']==bid)
-        st.json({'barra':bid,'estaciones':element['stations']})
-    else:
-        nid=int(selection.split()[-1]);st.json(next(r for r in result['reactions'] if r['node_id']==nid))
-st.download_button('Descargar resultado de etapa',json.dumps({'geometry':geometry,'config':config,'result':result},indent=2),f'etapa-{stage}.json','application/json')
-with st.expander('Historial de etapas calculadas'):
-    st.json([{**{k:r[k] for k in ('stage','active_count','status','max_tension_kn','max_compression_kn')}} for _,r in sorted(st.session_state['visited'].items())])
-st.caption('Equilibrio independiente de cada etapa. No incluye pandeo, resistencia normativa ni deformaciones acumuladas del montaje.')
+        folder = Path(directory)
+        export(result, folder)
+        export_viewer(result, folder / 'viewer.html')
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as archive:
+            for path in sorted(folder.iterdir()):
+                archive.write(path, path.name)
+        return buffer.getvalue()
+
+
+def model_figure(result, scale):
+    figure = go.Figure()
+    nodes = result['nodes']
+    for deformed in ([False, True] if scale else [False]):
+        coords = [[], [], []]
+        for bar in result['elements']:
+            for axis in range(3):
+                coords[axis].extend([
+                    nodes[index]['xyz_m'][axis]
+                    + (scale * nodes[index]['displacement'][axis] if deformed else 0)
+                    for index in (bar['i'], bar['j'])])
+                coords[axis].append(None)
+        figure.add_trace(go.Scatter3d(
+            x=coords[0], y=coords[1], z=coords[2], mode='lines',
+            name=f'Deformed ×{scale}' if deformed else 'Dome',
+            line=dict(color='red' if deformed else '#2684ab', width=3)))
+    supports = [node for node in nodes if node['fixed_dofs']]
+    figure.add_trace(go.Scatter3d(
+        x=[n['xyz_m'][0] for n in supports], y=[n['xyz_m'][1] for n in supports],
+        z=[n['xyz_m'][2] for n in supports], mode='markers', name='Supports',
+        marker=dict(size=5, symbol='diamond', color='black')))
+    figure.update_layout(scene=dict(aspectmode='data', xaxis_title='X (m)',
+                                   yaxis_title='Y (m)', zaxis_title='Z (m)'),
+                         margin=dict(l=0, r=0, t=10, b=0), height=520)
+    return figure
+
+
+st.set_page_config(page_title='Steel dome analysis', layout='wide')
+mode = st.sidebar.selectbox('Analysis mode', ['Construction stages (truss)', 'Completed dome (rigid frame)',
+                                              'Dashboard (combined)'], key='analysis_mode')
+if mode == 'Dashboard (combined)':
+    from domestage.dashboard import render as render_dashboard
+    render_dashboard()
+    st.stop()
+if mode == 'Construction stages (truss)':
+    from domestage.stage_app import render
+    render()
+    st.stop()
+
+st.title('Steel dome analysis')
+st.caption('Rigid-frame prototype · synthetic dome · SI units')
+st.warning('Demonstration only. Do not use these results to authorize construction or structural design.')
+st.info('This mode analyzes the completed dome with rigid connections under self-weight. '
+        'Choose Construction stages (truss) in the sidebar for the pin-jointed stage model.')
+with st.sidebar:
+    st.header('Circular steel tube')
+    with st.form('analysis_settings'):
+        diameter = st.number_input('Outside diameter (mm)', min_value=1.0, value=101.6)
+        thickness = st.number_input('Wall thickness (mm)', min_value=0.1, value=3.175, format='%.3f')
+        modulus = st.number_input('Elastic modulus (GPa)', min_value=1.0, value=200.0)
+        submitted = st.form_submit_button('Run analysis', type='primary')
+    st.caption('Steel density: 7850 kg/m³. Base translations restrained; rotations free. '
+               'Linear elastic Euler–Bernoulli model; no strength or buckling checks.')
+
+if submitted or 'frame_result' not in st.session_state:
+    try:
+        with st.spinner('Solving dome equilibrium…'):
+            result = calculate(diameter, thickness, modulus)
+        st.session_state.frame_result = result
+        st.session_state.frame_settings = (diameter, thickness, modulus)
+    except (ValueError, np.linalg.LinAlgError) as error:
+        st.error(f'Analysis could not be completed: {error}')
+        st.stop()
+result = st.session_state.frame_result
+settings = st.session_state.frame_settings
+st.caption(f'Displayed results: diameter {settings[0]:g} mm, thickness {settings[1]:g} mm, '
+           f'elastic modulus {settings[2]:g} GPa. Submit the form to apply changes.')
+summary = result['summary']
+for column, label, value in zip(
+        st.columns(4), ['Nodes', 'Bars', 'Mass (kg)', 'Max displacement (mm)'],
+        [summary['nodes'], summary['elements'], f"{summary['mass_kg']:,.1f}",
+         f"{summary['max_displacement_m'] * 1000:.4f}"]):
+    column.metric(label, value)
+scale = st.slider('Deformation display multiplier', 0, 5000, 0, step=100)
+st.plotly_chart(model_figure(result, scale), width='stretch')
+bars = pd.DataFrame([
+    {'bar_id': bar['id'], 'group': bar['layer'], 'length_m': bar['length_m'],
+     'min_axial_kN': min(s['N_Vy_Vz_T_My_Mz'][0] for s in bar['stations']) / 1000,
+     'max_axial_kN': max(s['N_Vy_Vz_T_My_Mz'][0] for s in bar['stations']) / 1000}
+    for bar in result['elements']])
+nodes = pd.DataFrame([
+    {'node_id': node['id'], **{
+        label: node[key][axis] * factor
+        for key, labels, factor in [('displacement', ['ux_mm', 'uy_mm', 'uz_mm'], 1000),
+                                    ('reaction', ['rx_kN', 'ry_kN', 'rz_kN'], .001)]
+        for axis, label in enumerate(labels)}}
+    for node in result['nodes']])
+bar_tab, node_tab = st.tabs(['Bar forces', 'Displacements and reactions'])
+with bar_tab:
+    st.caption('Axial tension is positive. Min/max use the solver’s sampled stations.')
+    st.dataframe(bars, hide_index=True, width='stretch')
+with node_tab:
+    st.dataframe(nodes, hide_index=True, width='stretch')
+st.download_button('Download results and interactive viewer (ZIP)', download_bundle(result),
+                   file_name='dome-results.zip', mime='application/zip')
+st.caption('Archive includes JSON, CSV, a report, and a standalone HTML viewer.')

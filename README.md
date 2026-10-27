@@ -1,5 +1,9 @@
 # DomeStage · análisis de montaje de domos
 
+The construction-stage truss workflow and the independent rigid-frame demo are now
+available in the Streamlit app. See [Run the app and import models](docs/USAGE.md)
+for installation, supported Excel/DXF inputs, model assumptions, and validation.
+
 Simulador de estructuras 3D que incorpora barras por etapas y calcula fuerzas internas, reacciones y desplazamientos con el motor de armaduras o pórticos del proyecto.
 
 ## Simulador conectado al motor estructural

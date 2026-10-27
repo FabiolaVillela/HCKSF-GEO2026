@@ -1,7 +1,7 @@
 from pathlib import Path
 from streamlit.testing.v1 import AppTest
 
-APP=Path(__file__).resolve().parents[1]/'src/domestage/app.py'
+APP=Path(__file__).resolve().parents[1]/'src/domestage/dynamic_dashboard.py'
 
 
 def test_dashboard_switches_stability_and_recomputes_configuration():
