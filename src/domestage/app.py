@@ -94,6 +94,14 @@ cols[0].metric('Peso propio instalado',f'{result["mass_kg"]*9.80665/1000:.3f} kN
 cols[1].metric('Carga instalador',f'{result["worker_load_N"]/1000:.3f} kN')
 cols[2].metric('Tracción máxima',f'{result["max_tension_kn"]:.3f} kN' if result['stable'] else '—')
 cols[3].metric('Compresión máxima',f'{result["max_compression_kn"]:.3f} kN' if result['stable'] else '—')
+# Preferencias de vista: fuera de config y de la clave del cálculo.
+show_deformed=st.checkbox('Mostrar deformada nodal',value=False,disabled=not bool(result['stable']),key='show_deformed')
+deformation_scale=st.number_input('Factor visual de deformada',min_value=0.,max_value=100000.,value=10.,step=1.,disabled=not (show_deformed and result['stable']),key='deformation_scale')
+if show_deformed and result['stable']:
+    real=result['max_displacement_mm']
+    st.caption(f'Máximo real: {real:.3f} mm → dibujado: {real*deformation_scale:.3f} mm (×{deformation_scale:g}). La referencia permanece visible; se unen los nodos desplazados con barras rectas.')
+elif not result['stable']:
+    st.caption('La deformada no está disponible sin equilibrio de la etapa.')
 # Mantener el visualizador del equipo si Plotly está instalado.
 try:
     from domestage.viz import create_dome_3d_figure,create_history_chart
@@ -107,11 +115,13 @@ if create_dome_3d_figure:
     view_model=StructureModel(nodes,bars,pd.DataFrame(),supports,pd.DataFrame())
     fig=create_dome_3d_figure(view_model,result['active_bar_ids'],result['new_bar_ids'],
                               pd.Series({int(k):v for k,v in result['forces'].items()},dtype=float) if result['stable'] else None,
-                              analysis_stable=result['stable'] is True,worker_node=result['worker_node'],support_label=support)
+                              analysis_stable=result['stable'] is True,worker_node=result['worker_node'],support_label=support,
+                              displacements={n['node_id']:n['values'] for n in result['displacements']},
+                              show_deformed=show_deformed and bool(result['stable']),deformation_scale=deformation_scale)
     st.plotly_chart(fig,use_container_width=True)
 if result['stable']:
     with tempfile.TemporaryDirectory() as directory:
-        viewer=export_viewer(result['solution'],Path(directory)/'etapa.html').read_text()
+        viewer=export_viewer(result['solution'],Path(directory)/'etapa.html',show_deformed=show_deformed,deformation_scale=deformation_scale).read_text()
     if not create_dome_3d_figure:components.html(viewer,height=880,scrolling=True)
     st.download_button('Descargar visor de la etapa',viewer,f'etapa-{stage}.html','text/html')
     options=[f'Barra {b}' for b in result['active_bar_ids']]+[f'Apoyo {r["node_id"]}' for r in result['reactions']]

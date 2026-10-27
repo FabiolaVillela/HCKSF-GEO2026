@@ -1,7 +1,7 @@
 'use strict';
 (()=>{
 const $=id=>document.getElementById(id), canvas=$('viewport'), ctx=canvas.getContext('2d');
-let geometry=null, plan=[], currentStage=0, current=null, revision=0, requestId=0, playing=false, selected='', segments=[], projected=new Map();
+let geometry=null, plan=[], currentStage=0, current=null, revision=0, requestId=0, playing=false, selected='', segments=[], projected=new Map(), deformedSegments=[];
 const calculated=new Map(); let q=normalize([.87,-.35,.12,.32]), zoom=1; const pointers=new Map(); let dragged=false, pinch=null, sliderTimer;
 let supportOverrides = {}; // {node_id: 'articulado' | 'empotrado'}
 
@@ -34,7 +34,7 @@ function clearAnalysis(){
   $('download-stage').disabled=true;
   $('max-tension').textContent='—'; $('max-compression').textContent='—';
   $('max-displacement').textContent='—'; $('installed-weight').textContent='—';
-  badge('CALCULATING','pending'); selectionDetail(); draw();
+  badge('CALCULATING','pending'); updateDeformation(); selectionDetail(); draw();
 }
 
 function badge(label,status){
@@ -89,10 +89,10 @@ async function setStage(stage){
       $('max-compression').textContent='−'+fmt(value.max_compression_kn)+' kN';
       $('max-displacement').textContent=fmt(value.max_displacement_mm)+' mm';
     }
-    $('download-stage').disabled=false; selectionDetail(); history(); draw(); return value;
+    $('download-stage').disabled=false; updateDeformation(); selectionDetail(); history(); draw(); return value;
   }catch(error){
     if(token!==requestId||rev!==revision)return null; current=null;
-    badge('ERROR','error'); $('message').textContent=error.message; selectionDetail(); draw(); return null;
+    badge('ERROR','error'); $('message').textContent=error.message; updateDeformation(); selectionDetail(); draw(); return null;
   }
 }
 
@@ -125,11 +125,17 @@ function selectionDetail(){
     const r=current.reactions.find(r=>r.node_id===id);
     const cond = supportOverrides[id] || config().support;
     if(!r){box.append(document.createTextNode(' · No active connected members yet.')); return;}
-    box.append(table([
+    const rows=[
       ['Boundary Condition', cond==='empotrado'?'Fixed (6 DOFs)':'Pinned (3 DOFs)'],
       ['Reactions Rx / Ry / Rz', r.values.slice(0,3).map(v=>fmt(v/1000)).join(' / ')+' kN'],
       ['Moments Mx / My / Mz', r.values.slice(3).map(v=>fmt(v/1000)).join(' / ')+' kN·m']
-    ]));
+    ];
+    if(window.DomeReactions){
+      const center=window.DomeReactions.center(geometry);
+      const cyl=window.DomeReactions.cylindrical(geometry.nodes.find(n=>n.id===id),r.values,center);
+      if(cyl)rows.push(['Radial / Tangential / Z',[cyl.values[0],cyl.values[1],cyl.values[2]].map(v=>fmt(v/1000)).join(' / ')+' kN']);
+    }
+    box.append(table(rows));
   }
 }
 
@@ -144,6 +150,47 @@ function history(){
     for(const value of [s.stage, s.active_count, r?({stable:'Equilibrium',unstable:'Mechanism',empty:'No bars',error:'Error'}[r.status]):'Pending', r?.stable?fmt(r.max_tension_kn):'—', r?.stable?fmt(r.max_compression_kn):'—']){
       tr.insertCell().textContent=value;
     }
+  }
+  div.append(t);
+}
+
+// PR 11 Deformation & Reactions integration
+function updateDeformation(){
+  const enabled=Boolean(current?.stable&&current.displacements?.length);
+  $('show-deformation').disabled=!enabled; $('deformation-factor').disabled=!enabled;
+  $('show-reactions').disabled=!enabled; $('reaction-mode').disabled=!enabled;
+  if(!enabled){
+    $('show-deformation').checked=false; $('show-reactions').checked=false;
+    $('reaction-legend').hidden=true; $('reaction-panel').hidden=true;
+  }
+  const factor=Math.max(0,+$('deformation-factor').value||0);
+  $('deformation-note').textContent=!enabled?'Deflection unavailable without stable solution.':
+    $('show-deformation').checked?`Amplified visual deflection ×${factor}. Structural values remain exact.`:'True scale (deflection view off).';
+  $('reaction-note').textContent=!enabled?'Reactions unavailable without stable solution.':
+    $('show-reactions').checked?`Displaying support reaction vectors (${$('reaction-mode').value}).`:'Support reaction vectors hidden.';
+  $('reaction-legend').hidden=!$('show-reactions').checked||$('reaction-mode').value==='total';
+  reactionTable();
+}
+
+function reactionTable(){
+  const panel=$('reaction-panel'), div=$('reaction-table'); div.replaceChildren();
+  if(!$('show-reactions').checked||!current?.reactions?.length){panel.hidden=true; return;}
+  panel.hidden=false;
+  const t=document.createElement('table'), head=t.insertRow();
+  for(const label of ['Support Node','Rx (kN)','Ry (kN)','Rz (kN)','R Total (kN)','Mx (kN·m)','My (kN·m)','Mz (kN·m)','Radial Rr','Tangential Rt']){
+    const th=document.createElement('th'); th.textContent=label; head.append(th);
+  }
+  const center=window.DomeReactions?window.DomeReactions.center(geometry):null;
+  for(const r of current.reactions){
+    const row=t.insertRow(), node=geometry.nodes.find(n=>n.id===r.node_id);
+    const total=Math.hypot(...r.values.slice(0,3))/1000;
+    const cyl=window.DomeReactions?window.DomeReactions.cylindrical(node,r.values,center):null;
+    row.insertCell().textContent='Node '+r.node_id;
+    for(let i=0;i<3;i++)row.insertCell().textContent=fmt(r.values[i]/1000);
+    row.insertCell().textContent=fmt(total);
+    for(let i=3;i<6;i++)row.insertCell().textContent=fmt(r.values[i]/1000);
+    row.insertCell().textContent=cyl?fmt(cyl.values[0]/1000)+' kN':'—';
+    row.insertCell().textContent=cyl?fmt(cyl.values[1]/1000)+' kN':'—';
   }
   div.append(t);
 }
@@ -166,10 +213,19 @@ function draw(){
     return [n.id,[w/2+p[0]*scale, h/2-p[1]*scale, p[2]]];
   }));
 
+  const factor=Math.max(0,+$('deformation-factor').value||0);
+  const showDef=$('show-deformation').checked&&Boolean(current?.stable)&&window.DomeDeformation;
+  const deformedCoords=showDef?window.DomeDeformation.displaced(geometry,current.displacements,factor):null;
+  const defProjected=deformedCoords?new Map(Array.from(deformedCoords.entries()).map(([id,pos])=>{
+    const p=rotate([pos[0]-center[0],pos[1]-center[1],pos[2]-center[2]]);
+    return [id,[w/2+p[0]*scale, h/2-p[1]*scale, p[2]]];
+  })):projected;
+
   const active=new Set(plan[currentStage]?.active_bar_ids||[]), fresh=new Set(plan[currentStage]?.new_bar_ids||[]);
   segments=geometry.bars.map(b=>({b, a:projected.get(b.i), z:projected.get(b.j)})).sort((a,b)=>(a.a[2]+a.z[2])-(b.a[2]+b.z[2]));
+  deformedSegments=showDef?geometry.bars.filter(b=>active.has(b.id)).map(b=>({b, a:defProjected.get(b.i), z:defProjected.get(b.j)})).sort((a,b)=>(a.a[2]+a.z[2])-(b.a[2]+b.z[2])):segments;
 
-  // Ghost & Installed Bars
+  // 1. Ghost & Installed Bars
   for(const s of segments){
     const installed=active.has(s.b.id), f=current?.stable?current.forces[s.b.id]:null;
     ctx.beginPath(); ctx.moveTo(s.a[0],s.a[1]); ctx.lineTo(s.z[0],s.z[1]);
@@ -180,11 +236,62 @@ function draw(){
   }
   ctx.setLineDash([]);
 
-  // Base Support nodes
+  // 2. Optional Amplified Deflection wireframe
+  if(showDef){
+    for(const s of deformedSegments){
+      ctx.beginPath(); ctx.moveTo(s.a[0],s.a[1]); ctx.lineTo(s.z[0],s.z[1]);
+      ctx.strokeStyle=selected==='b'+s.b.id?'#000000':'#7C3AED';
+      ctx.lineWidth=selected==='b'+s.b.id?4.5:2.4;
+      ctx.stroke();
+    }
+  }
+
+  // 3. Base Support nodes
   for(const id of geometry.support_nodes){
     const p=projected.get(id);
     ctx.beginPath(); ctx.arc(p[0],p[1],selected==='s'+id?7.5:4.5,0,2*Math.PI);
     ctx.fillStyle='#F59E0B'; ctx.fill();
+  }
+
+  // 4. Reactions vectors from PR 11
+  if($('show-reactions').checked&&current?.reactions?.length){
+    const maxR=Math.max(1,...current.reactions.map(r=>Math.hypot(...r.values.slice(0,3)))),
+          arrowLen=Math.min(w,h)*0.09, mode=$('reaction-mode').value;
+    const centerNode=window.DomeReactions?window.DomeReactions.center(geometry):null;
+    for(const r of current.reactions){
+      const p=projected.get(r.node_id); if(!p)continue;
+      const rx=r.values[0], ry=r.values[1], rz=r.values[2];
+      const selectedSup=selected==='s'+r.node_id;
+      const drawArrow=(vx,vy,vz,color)=>{
+        const mag=Math.hypot(vx,vy,vz); if(mag<=1e-9)return;
+        const norm=mag/maxR*arrowLen;
+        const rot=rotate([vx/mag*norm, vy/mag*norm, vz/mag*norm]);
+        const tip=[p[0]+rot[0], p[1]-rot[1]];
+        ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(tip[0],tip[1]);
+        ctx.strokeStyle=color; ctx.lineWidth=selectedSup?3:1.8; ctx.stroke();
+        const angle=Math.atan2(tip[1]-p[1], tip[0]-p[0]);
+        ctx.beginPath();
+        ctx.lineTo(tip[0]-7*Math.cos(angle-0.45), tip[1]-7*Math.sin(angle-0.45));
+        ctx.lineTo(tip[0], tip[1]);
+        ctx.lineTo(tip[0]-7*Math.cos(angle+0.45), tip[1]-7*Math.sin(angle+0.45));
+        ctx.stroke();
+      };
+      if(mode==='total'){
+        drawArrow(rx,ry,rz,selectedSup?'#000000':'#F59E0B');
+      } else if(mode==='components'){
+        drawArrow(rx,0,0,'#15803D'); drawArrow(0,ry,0,'#DC2626'); drawArrow(0,0,rz,'#2563EB');
+      } else if(mode==='cylindrical'&&window.DomeReactions){
+        const node=geometry.nodes.find(n=>n.id===r.node_id);
+        const cyl=window.DomeReactions.cylindrical(node,r.values,centerNode);
+        if(cyl){
+          drawArrow(...cyl.vectors[0],'#15803D'); drawArrow(...cyl.vectors[1],'#D97706'); drawArrow(...cyl.vectors[2],'#2563EB');
+        }
+      }
+      if(selectedSup){
+        ctx.fillStyle='#000000'; ctx.font='bold 11px sans-serif';
+        ctx.fillText(`R: ${fmt(Math.hypot(rx,ry,rz)/1000)} kN`, p[0]+8, p[1]-10);
+      }
+    }
   }
 }
 
@@ -207,6 +314,10 @@ $('btn-play').onclick=async()=>{
 
 for(const id of ['sel-profile','sel-material','sel-connection','sel-support'])$(id).addEventListener('change',()=>replan());
 $('sel-step').addEventListener('change',()=>replan(true));
+$('show-deformation').addEventListener('change',()=>{updateDeformation(); draw();});
+$('deformation-factor').addEventListener('input',()=>{updateDeformation(); draw();});
+$('show-reactions').addEventListener('change',()=>{updateDeformation(); draw();});
+$('reaction-mode').addEventListener('change',()=>{updateDeformation(); draw();});
 
 // CSV Export & Import for Node Connection Conditions
 $('btn-export-csv').onclick=()=>{
@@ -305,7 +416,7 @@ canvas.addEventListener('pointerup',e=>{
   }
   if(!value){
     best=10;
-    for(const s of segments){
+    for(const s of [...segments,...deformedSegments]){
       const dx=s.z[0]-s.a[0], dy=s.z[1]-s.a[1], t=Math.max(0,Math.min(1,((x-s.a[0])*dx+(y-s.a[1])*dy)/(dx*dx+dy*dy||1))), d=Math.hypot(x-s.a[0]-t*dx,y-s.a[1]-t*dy);
       if(d<best){best=d; value='b'+s.b.id;}
     }
