@@ -27,6 +27,21 @@ def test_http_stage_returns_solver_results_and_mechanisms():
     assert result['forces']=={} and result['max_compression_kn'] is None
 
 
+def test_http_stages_batch_solves_multiple_stages():
+    payload = dict(geometry=tetrahedron(), config=config(), stages=[1, 3])
+    status, result = post('/api/stages/batch', payload)
+    assert status == 200
+    assert len(result) == 2
+    assert result[0]['stage'] == 1 and result[0]['status'] == 'unstable'
+    assert result[1]['stage'] == 3 and result[1]['stable']
+
+    # Test batch without stages list computes all stages
+    payload_all = dict(geometry=tetrahedron(), config=config())
+    status_all, result_all = post('/api/stages/batch', payload_all)
+    assert status_all == 200
+    assert len(result_all) >= 3
+
+
 def test_http_rejects_bad_json_invalid_input_and_foreign_origin():
     assert post('/api/stage',b'{invalid')[0]==400
     assert post('/api/plan',{'geometry':tetrahedron(),'bars_per_step':0})[0]==400

@@ -102,6 +102,11 @@ const spanish={
   "Gray: unsolved": "Gris: sin solución",
   "Calculation server not found. Ensure server is running.": "No se encontró el servidor de cálculo. Comprueba que esté ejecutándose.",
   "Calculation engine error.": "Error del motor de cálculo.",
+  "Precalculating all stages for instant 60 FPS motion…": "Precalculando todas las etapas para movimiento fluido a 60 FPS…",
+  "All {total} stages precalculated in memory · Fluid 60 FPS motion active": "Todas las {total} etapas calculadas en memoria · Movimiento 60 FPS fluido activo",
+  "Precalculating stage {current} of {total}…": "Calculando etapa {current} de {total}…",
+  "READY / 60 FPS": "LISTO / 60 FPS",
+  "STAGE PRELOAD FAILED": "FALLÓ PRECARGA",
   "CALCULATING": "CALCULANDO",
   "Bar #": "Barra #",
   "Support node ": "Nodo de apoyo ",
@@ -279,9 +284,75 @@ async function replan(reset=false){
     if(rev!==revision)return; plan=p;
     $('stage-slider').max=plan.length-1; $('last-stage').textContent=plan.length-1;
     await setStage(reset?0:Math.min(currentStage,plan.length-1));
+    precomputeAllStages(plan, rev);
   }catch(error){
     if(rev!==revision)return; badge("ERROR",'error'); setMessage(error.message);
   }
+}
+
+function applyStage(stage, value){
+  currentStage=stage; current=value; const s=plan[stage];
+  if(s){
+    $('stage-slider').value=stage; $('stage-num').textContent=stage;
+    $('active-bars-count').textContent=s.active_count; $('total-bars-count').textContent=s.total_bars;
+    $('progress-text').textContent=fmt(s.progress_pct,1)+'%'; $('progress-fill').style.width=s.progress_pct+'%';
+    $('newest-bar-text').textContent=s.new_bar_ids.length ? s.new_bar_ids.map(i=>translate("Bar #")+i).join(', ') : translate("Base Ring Installed");
+  }
+  renderResult(value);
+}
+
+async function precomputeAllStages(currentPlan, rev){
+  const total=currentPlan.length; if(total<=1)return;
+  const card=$('precompute-card');
+  if(card){
+    card.classList.remove('complete');
+    $('precompute-spinner').textContent='⚡';
+    $('precompute-badge').textContent=translate('CALCULATING…');
+    $('precompute-badge').className='badge badge-pending';
+  }
+  const updateProgress=()=>{
+    if(rev!==revision)return;
+    const count=calculated.size, pct=Math.round((count/total)*100);
+    $('precompute-count').textContent=count+' / '+total+' ('+pct+'%)';
+    $('precompute-fill').style.width=pct+'%';
+    $('precompute-label').textContent=translate("Precalculating stage {current} of {total}…",{current:count,total});
+  };
+  updateProgress();
+  const missing=[];
+  for(let s=0; s<total; s++)if(!calculated.has(s))missing.push(s);
+
+  const BATCH_SIZE=8;
+  for(let i=0; i<missing.length; i+=BATCH_SIZE){
+    if(rev!==revision)return;
+    const batch=missing.slice(i, i+BATCH_SIZE);
+    try{
+      const results=await api('/api/stages/batch',{geometry,config:config(),stages:batch});
+      if(rev!==revision)return;
+      for(const res of results)calculated.set(res.stage, res);
+      updateProgress();
+    }catch(err){
+      if(rev!==revision)return;
+      for(const s of batch){
+        if(rev!==revision)return;
+        try{
+          const res=await api('/api/stage',{geometry,config:config(),stage:s});
+          if(rev!==revision)return;
+          calculated.set(s, res); updateProgress();
+        }catch(e){}
+      }
+    }
+  }
+  if(rev!==revision)return;
+  if(card){
+    card.classList.add('complete');
+    $('precompute-spinner').textContent='✓';
+    $('precompute-badge').textContent=translate("READY / 60 FPS");
+    $('precompute-badge').className='badge badge-stable';
+    $('precompute-label').textContent=translate("All {total} stages precalculated in memory · Fluid 60 FPS motion active",{total});
+    $('precompute-count').textContent=total+' / '+total+' (100%)';
+    $('precompute-fill').style.width='100%';
+  }
+  history();
 }
 
 function pendingStage(stage){
@@ -294,14 +365,17 @@ function pendingStage(stage){
 }
 
 async function setStage(stage){
-  if(!plan.length)return; stage=Math.max(0,Math.min(stage,plan.length-1)); pendingStage(stage);
+  if(!plan.length)return; stage=Math.max(0,Math.min(stage,plan.length-1));
+  if(calculated.has(stage)){
+    const value=calculated.get(stage); applyStage(stage, value); return value;
+  }
+  pendingStage(stage);
   const token=++requestId, rev=revision;
   setMessage('Solving equilibrium for Stage {stage}…',{stage}); badge("SOLVING…",'pending');
   try{
-    const value=calculated.get(stage)||await api('/api/stage',{geometry,config:config(),stage});
+    const value=await api('/api/stage',{geometry,config:config(),stage});
     if(token!==requestId||rev!==revision)return null;
-    calculated.set(stage,value); current=value;
-    renderResult(value); return value;
+    calculated.set(stage,value); applyStage(stage, value); return value;
   }catch(error){
     if(token!==requestId||rev!==revision)return null; current=null;
     badge("ERROR",'error'); setMessage(error.message); updateDeformation(); selectionDetail(); draw(); return null;
@@ -622,7 +696,17 @@ function draw(){
 // Interaction Listeners
 $('show-dimensions').addEventListener('change',draw);
 $('element-select').addEventListener('change',()=>{selected=$('element-select').value; selectionDetail(); draw();});
-$('stage-slider').addEventListener('input',()=>{stop(); clearTimeout(sliderTimer); const stage=+$('stage-slider').value; pendingStage(stage); sliderTimer=setTimeout(()=>setStage(stage),130);});
+$('stage-slider').addEventListener('input',()=>{
+  stop();
+  const stage=+$('stage-slider').value;
+  if(calculated.has(stage)){
+    applyStage(stage, calculated.get(stage));
+  } else {
+    pendingStage(stage);
+    clearTimeout(sliderTimer);
+    sliderTimer=setTimeout(()=>setStage(stage),80);
+  }
+});
 $('btn-prev').onclick=()=>{stop(); setStage(currentStage-1);};
 $('btn-next').onclick=()=>{stop(); setStage(currentStage+1);};
 $('btn-play').onclick=async()=>{
@@ -630,9 +714,14 @@ $('btn-play').onclick=async()=>{
   playing=true; $('btn-play').textContent=translate("⏸ Pause");
   if(currentStage===plan.length-1)await setStage(0);
   while(playing&&currentStage<plan.length-1){
-    const r=await setStage(currentStage+1);
-    if(!r||!r.stable){stop(); break;}
-    await new Promise(r=>setTimeout(r,250));
+    const next=currentStage+1;
+    if(calculated.has(next)){
+      applyStage(next, calculated.get(next));
+    } else {
+      const r=await setStage(next);
+      if(!r||!r.stable){stop(); break;}
+    }
+    await new Promise(r=>setTimeout(r,65));
   }
   stop();
 };
@@ -873,8 +962,72 @@ translateStatic();
     for(const item of c.materials)$('sel-material').append(new Option(translate(item),item));
     geometry=await api('/api/demo');
     populateSupports(); await replan(true);
+    const urlParams = new URLSearchParams(window.location.search);
+    if(urlParams.has('stage')) await setStage(parseInt(urlParams.get('stage'),10));
+    if(urlParams.get('deformed')==='1'){ $('show-deformation').checked=true; updateDeformation(); draw(); }
+    if(urlParams.get('reactions')==='1'){ $('show-reactions').checked=true; updateReactions(); draw(); }
+    if(urlParams.get('aisc')==='1'){ $('show-aisc').checked=true; $('design-grade').value='a500-21-c'; window.AISCView?.update(); draw(); }
+    if(urlParams.has('record')){ setTimeout(()=>window.recordDemo(urlParams.get('record')), 400); }
   }catch(e){
     badge("SERVER OFFLINE",'error'); setMessage(e.message+translate(" · Run: PYTHONPATH=src python -m domestage.server"));
   }
+  async function captureFrame(folder, filename){
+    const data = canvas.toDataURL('image/png');
+    await api('/api/save-frame', {folder, filename, data});
+  }
+  window.recordDemo = async function(type){
+    if(type==='assembly'){
+      for(let s=0; s<=60; s+=3){
+        await setStage(s);
+        await new Promise(r=>setTimeout(r, 70));
+        await captureFrame('assembly', `frame_${String(s).padStart(3,'0')}.png`);
+      }
+    } else if(type==='deformation'){
+      await setStage(60);
+      $('show-deformation').checked=false; $('show-reactions').checked=false;
+      updateDeformation(); updateReactions(); draw();
+      await captureFrame('deformation', 'frame_000.png');
+      $('show-deformation').checked=true;
+      for(let fac=10; fac<=100; fac+=15){
+        $('deformation-factor').value=fac;
+        updateDeformation(); draw();
+        await new Promise(r=>setTimeout(r, 70));
+        await captureFrame('deformation', `frame_${String(fac).padStart(3,'0')}.png`);
+      }
+      $('show-reactions').checked=true;
+      updateReactions(); draw();
+      await new Promise(r=>setTimeout(r, 70));
+      await captureFrame('deformation', 'frame_110.png');
+    } else if(type==='aisc'){
+      await setStage(60);
+      $('show-aisc').checked=false;
+      window.AISCView?.update(); draw();
+      await captureFrame('aisc', 'frame_000.png');
+      $('show-aisc').checked=true;
+      $('design-grade').value='a500-21-c';
+      window.AISCView?.update(); draw();
+      await new Promise(r=>setTimeout(r, 300));
+      await captureFrame('aisc', 'frame_001.png');
+    }
+  };
+  window.simulator = {
+    setStage,
+    getStage: () => currentStage,
+    getPlan: () => plan,
+    getCurrent: () => current,
+    getCalculated: () => calculated,
+    applyStage,
+    replan,
+    draw,
+    canvas,
+    orbit: (dx, dy) => {
+      const n = Math.hypot(dx, dy);
+      if(n){
+        const t = n * 0.004;
+        q = normalize(mul([Math.cos(t), dy/n*Math.sin(t), dx/n*Math.sin(t), 0], q));
+        draw();
+      }
+    }
+  };
 })();
 })();
