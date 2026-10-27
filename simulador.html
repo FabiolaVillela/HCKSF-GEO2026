@@ -438,6 +438,12 @@
         <button class="btn btn-play" id="download-report" style="padding: 5px 12px; font-size: 0.8rem;" data-i18n-title="Per-bar tension, compression and AISC 360-22 utilization (needs a material grade) and per-node deflection and support type, over all stages" title="Per-bar tension, compression and AISC 360-22 utilization (needs a material grade) and per-node deflection and support type, over all stages"><span data-i18n="📄 Export results report (Excel)">📄 Export results report (Excel)</span></button>
       </div>
     </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 10px;font-size:.82rem;">
+      <span style="font-weight:700;color:var(--gb-darker);"><span data-i18n="Utilization figures for the calculation report">Utilization figures for the calculation report</span></span>
+      <label style="display:inline-flex;gap:6px;align-items:center;"><span data-i18n="Progress (%):">Progress (%):</span>
+        <input id="figures-milestones" type="text" value="50, 67, 83, 95, 100" style="width:150px;padding:5px;border:1px solid var(--gray-29);border-radius:6px;" aria-label="Progress milestones (%)" data-i18n-aria-label="Progress milestones (%)"></label>
+      <button class="btn btn-play" id="download-figures" style="padding:5px 12px;font-size:.8rem;" data-i18n-title="Plan and elevation coloured by AISC utilization at each progress (needs a steel material grade)" title="Plan and elevation coloured by AISC utilization at each progress (needs a steel material grade)"><span data-i18n="🖼️ Export utilization figures (HTML)">🖼️ Export utilization figures (HTML)</span></button>
+    </div>
     <div id="selection-detail" style="font-size: 0.85rem; color: var(--gray-71);">
       <span data-i18n="Click any installed bar in the 3D model to inspect its Axial forces and My/Mz Bending Moments.">Click any installed bar in the 3D model to inspect its Axial forces and My/Mz Bending Moments.</span>
     </div>
@@ -452,6 +458,7 @@
 <div class="charts-grid">
 <figure><figcaption data-i18n="Maximum axial force vs % progress">Maximum axial force vs % progress</figcaption><svg id="chart-force" viewBox="0 0 600 340" role="img" aria-label="Maximum axial force versus assembly progress" data-i18n-aria-label="Maximum axial force versus assembly progress"></svg></figure>
 <figure><figcaption data-i18n="Maximum deflection vs % progress">Maximum deflection vs % progress</figcaption><svg id="chart-displacement" viewBox="0 0 600 340" role="img" aria-label="Maximum deflection versus assembly progress" data-i18n-aria-label="Maximum deflection versus assembly progress"></svg></figure>
+<figure><figcaption data-i18n="Maximum utilization vs % progress">Maximum utilization vs % progress</figcaption><svg id="chart-utilization" viewBox="0 0 600 340" role="img" aria-label="Maximum AISC utilization versus assembly progress" data-i18n-aria-label="Maximum AISC utilization versus assembly progress"></svg></figure>
 </div>
 </div>
 

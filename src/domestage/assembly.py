@@ -144,24 +144,44 @@ def solve_stage(geometry, config=None, stage=0):
     return json.loads(_cached_stage(payload))
 
 
-def progress_series(geometry, config=None):
+def progress_series(geometry, config=None, design=None):
     """Máximos por etapa frente al % de avance, para las gráficas de resultados.
 
     Las etapas sin solución (mecanismo o error) se devuelven con valores None:
     no se inventan fuerzas ni desplazamientos.
+
+    Con `design` (grado de material para AISC, p. ej. {'grade': 'a500-21-c'}) cada etapa resuelta
+    incluye además la utilización máxima preliminar AISC 360-22 (`aisc.check_result`). Sin grado,
+    con aluminio o con carga de instalador no se revisa: `max_utilization` es None y
+    `utilization_status` dice por qué ('no_grade', 'aluminum', 'installer').
     """
-    config=dict(config or {})
+    from .aisc import check_result  # local import: aisc depends on this module
+    from .design_materials import design_material
+    config=dict(config or {}); design=dict(design or {})
     plan=stage_plan(geometry,config.get('bars_per_step',2))
+    material=config.get('material','Acero')
+    if material!='Acero': mode='aluminum'
+    elif not design.get('grade'): mode='no_grade'
+    elif config.get('worker_kg',0): mode='installer'
+    else:
+        mode='aisc'; design_material(material,design)  # invalid grade -> ValueError before solving
     series=[]
     for info in plan:
         r=solve_stage(geometry,config,info['stage'])
         stable=r['status']=='stable'
         tension=r['max_tension_kn'] if stable else None
         compression=r['max_compression_kn'] if stable else None
-        series.append(dict(stage=info['stage'],progress_pct=info['progress_pct'],active_count=info['active_count'],
-                           status=r['status'],max_tension_kn=tension,max_compression_kn=compression,
-                           max_force_kn=max(tension,compression) if stable else None,
-                           max_displacement_mm=r['max_displacement_mm'] if stable else None))
+        row=dict(stage=info['stage'],progress_pct=info['progress_pct'],active_count=info['active_count'],
+                 status=r['status'],max_tension_kn=tension,max_compression_kn=compression,
+                 max_force_kn=max(tension,compression) if stable else None,
+                 max_displacement_mm=r['max_displacement_mm'] if stable else None,
+                 utilization_status=mode,max_utilization=None,governing_bar=None,governing_equation=None)
+        if stable and mode=='aisc':
+            checked=check_result(r,design)
+            governing=checked.get('governing') or {}
+            row.update(max_utilization=checked['max_utilization'],governing_bar=governing.get('member_id'),
+                       governing_equation=governing.get('equation'))
+        series.append(row)
     return series
 
 

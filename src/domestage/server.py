@@ -7,7 +7,8 @@ import json
 
 from .assembly import catalog, geometry_from_dxf, geometry_from_structure, progress_series, stage_plan, solve_stage
 from .demo_model import generate_demo_dome
-from .default_model import default_model
+from .default_model import DEFAULT_NAME, default_model
+from .report_figures import build_figures, figures_html
 from .design_materials import material_catalog
 from .aisc import check_stage, check_all_stages
 from .report import build_report, report_xlsx
@@ -64,7 +65,10 @@ class Handler(BaseHTTPRequestHandler):
             if url.path=='/api/plan':
                 return self.send(200,stage_plan(payload['geometry'],payload.get('bars_per_step',2)))
             if url.path=='/api/progress':
-                return self.send(200,progress_series(payload['geometry'],payload.get('config')))
+                return self.send(200,progress_series(payload['geometry'],payload.get('config'),payload.get('design')))
+            if url.path=='/api/utilization-figures':
+                data=build_figures(payload['geometry'],payload.get('config'),payload.get('design'),payload.get('milestones'),payload.get('language','en'))
+                return self.send(200,figures_html(data,payload.get('model_name') or '').encode('utf-8'),'text/html; charset=utf-8')
             if url.path=='/api/report':
                 report=build_report(payload['geometry'],payload.get('config'),payload.get('design'))
                 return self.send(200,report_xlsx(report,payload.get('language','en')),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
