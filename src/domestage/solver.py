@@ -10,6 +10,7 @@ from scipy.linalg import eigvalsh
 from scipy.sparse.linalg import ArpackNoConvergence, eigsh, spsolve
 
 from .schema import G, SolveResult, StructureModel, validate_model
+from .validity import chord_rotations, rotation_problem
 
 
 def solve_truss(model: StructureModel, active_bar_ids: Iterable[int],
@@ -107,6 +108,14 @@ def solve_truss(model: StructureModel, active_bar_ids: Iterable[int],
         residual = matrix @ displacement - force
         if not np.isfinite(displacement).all() or np.max(np.abs(residual[free])) > 1e-7 * max(1., np.max(np.abs(force))):
             return unavailable('Equilibrium solution failed its residual check')
+    shift = displacement.reshape(n, 3)
+    first = [lookup[node] for node in bars.node_i]
+    second = [lookup[node] for node in bars.node_j]
+    rotations = chord_rotations(xyz[first], xyz[second], shift[first], shift[second])
+    worst = int(np.argmax(rotations))
+    problem = rotation_problem(ids[worst], float(rotations[worst]))
+    if problem:
+        return unavailable(problem)
     reactions = matrix @ displacement - force
     reactions[~fixed] = 0
     axial, stress, buckling = [], [], []
