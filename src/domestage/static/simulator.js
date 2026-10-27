@@ -89,6 +89,14 @@ const spanish={
   "Member & Node Detail Inspector": "Inspector de barras y nodos",
   "Click member or select here…": "Haz clic en una barra o selecciona aquí…",
   "Export Stage JSON": "Exportar etapa JSON",
+  "Utilization figures for the calculation report": "Figuras de utilización para la memoria de cálculo",
+  "Progress (%):": "Avance (%):",
+  "Progress milestones (%)": "Avances (%)",
+  "🖼️ Export utilization figures (HTML)": "🖼️ Exportar figuras de utilización (HTML)",
+  "Plan and elevation coloured by AISC utilization at each progress (needs a steel material grade)": "Planta y elevación coloreadas por utilización AISC en cada avance (requiere un grado de material de acero)",
+  "Building utilization figures…": "Generando figuras de utilización…",
+  "Utilization figures exported.": "Figuras de utilización exportadas.",
+  "The engine could not build the figures.": "El motor no pudo generar las figuras.",
   "📄 Export results report (Excel)": "📄 Exportar reporte de resultados (Excel)",
   "Per-bar tension, compression and AISC 360-22 utilization (needs a material grade) and per-node deflection and support type, over all stages": "Tracción, compresión y utilización AISC 360-22 por barra (requiere un grado de material) y desplazamiento y tipo de apoyo por nodo, en todas las etapas",
   "Building report ({n} stages)…": "Generando reporte ({n} etapas)…",
@@ -744,6 +752,20 @@ $('download-report').onclick=async()=>{
 
 // Default model (QuickDome) loaded at start; an uploaded DXF replaces it until the user restores it.
 let modelSource={name:'',isDefault:true};
+// Utilization figures (plan + elevation per % of progress) for the calculation report.
+$('download-figures').onclick=async()=>{
+  if(!geometry||!plan.length)return; const button=$('download-figures'), label=button.innerHTML;
+  button.disabled=true; button.textContent=translate('Building utilization figures…');
+  try{
+    const response=await fetch('/api/utilization-figures',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({geometry,config:config(),design:reportDesign(),milestones:$('figures-milestones').value,language,model_name:modelSource.name})});
+    if(!response.ok){let m=translate('The engine could not build the figures.');try{m=(await response.json()).message||m;}catch{} throw Error(m);}
+    const url=URL.createObjectURL(await response.blob()), a=document.createElement('a');
+    a.href=url; a.download=language==='es'?'figuras-utilizacion.html':'utilization-figures.html'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);
+    $('message').textContent=translate('Utilization figures exported.');
+  }catch(e){$('message').textContent=e.message;}
+  finally{button.disabled=false; button.innerHTML=label;}
+};
 function setModelSource(name,isDefault){
   modelSource={name,isDefault};
   $('model-source').textContent=name+(isDefault?' '+translate('(default)'):'');
