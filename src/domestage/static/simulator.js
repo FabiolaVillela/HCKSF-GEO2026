@@ -70,7 +70,9 @@ function updateReactions(){
  const available=!!current?.stable&&current.reactions.length>0,show=$('show-reactions').checked&&available;
  $('show-reactions').disabled=!available;
  $('reaction-panel').hidden=!show;
- $('reaction-note').textContent=!available?'Reacciones no disponibles sin equilibrio de esta etapa.':show?'Flechas: resultante global · escala común independiente de la deformada. Valores reales en la tabla.':'Reacciones ocultas.';
+ $('reaction-mode').disabled=!show;
+ $('reaction-legend').hidden=!show||$('reaction-mode').value!=='components';
+ $('reaction-note').textContent=!available?'Reacciones no disponibles sin equilibrio de esta etapa.':show?'Vectores en ejes globales · escala común independiente de la deformada. Selecciona un apoyo para ver sus etiquetas.':'Reacciones ocultas.';
  const box=$('reaction-table');box.replaceChildren();
  if(!show)return;
  const t=document.createElement('table'),head=t.insertRow();
@@ -78,16 +80,26 @@ function updateReactions(){
  for(const r of current.reactions){const row=t.insertRow();row.insertCell().textContent=r.node_id;for(const value of r.values)row.insertCell().textContent=fmt(value/1000);}
  box.append(t);
 }
-$('show-reactions').addEventListener('input',()=>{updateReactions();draw();});
+for(const id of ['show-reactions','reaction-mode'])$(id).addEventListener('input',()=>{updateReactions();draw();});
 function drawReactions(){
  if(!$('show-reactions').checked||!current?.stable)return;
+ // Una escala común para resultantes y componentes conserva sus proporciones.
  const max=Math.max(...current.reactions.map(r=>Math.hypot(...r.values.slice(0,3))),1e-12);
- ctx.save();ctx.setLineDash([]);ctx.strokeStyle='#087F8C';ctx.fillStyle='#087F8C';ctx.lineWidth=2;ctx.font='11px sans-serif';
+ const components=$('reaction-mode').value==='components';
+ ctx.save();ctx.setLineDash([]);ctx.lineWidth=2;ctx.font='12px sans-serif';
  for(const r of current.reactions){
    const p=projected.get(r.node_id);if(!p)continue;
-   const v=rotate(r.values.slice(0,3).map(x=>x/max*65)),dx=v[0],dy=-v[1],end=[p[0]+dx,p[1]+dy],length=Math.hypot(dx,dy);
-   if(length>1){const a=Math.atan2(dy,dx);ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(...end);ctx.stroke();ctx.beginPath();ctx.moveTo(...end);ctx.lineTo(end[0]-7*Math.cos(a-.45),end[1]-7*Math.sin(a-.45));ctx.lineTo(end[0]-7*Math.cos(a+.45),end[1]-7*Math.sin(a+.45));ctx.closePath();ctx.fill();}
-   ctx.fillText('R'+r.node_id+' · '+fmt(Math.hypot(...r.values.slice(0,3))/1000)+' kN',end[0]+5,end[1]-5);
+   const vectors=components?r.values.slice(0,3).map((value,i)=>({v:[0,1,2].map(j=>i===j?value:0),value,label:['Rx','Ry','Rz'][i],color:['#15803D','#DC2626','#2563EB'][i]})):[{v:r.values.slice(0,3),value:Math.hypot(...r.values.slice(0,3)),label:'R',color:'#087F8C'}];
+   for(const [i,vector] of vectors.entries()){
+     ctx.strokeStyle=vector.color;ctx.fillStyle=vector.color;
+     const v=rotate(vector.v.map(x=>x/max*65)),dx=v[0],dy=-v[1],end=[p[0]+dx,p[1]+dy],length=Math.hypot(dx,dy);
+     if(length>1){const a=Math.atan2(dy,dx);ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(...end);ctx.stroke();ctx.beginPath();ctx.moveTo(...end);ctx.lineTo(end[0]-7*Math.cos(a-.45),end[1]-7*Math.sin(a-.45));ctx.lineTo(end[0]-7*Math.cos(a+.45),end[1]-7*Math.sin(a+.45));ctx.closePath();ctx.fill();}
+     // Anclar etiquetas en una lista junto al nodo para evitar solapes de componentes pequeños.
+     if(selected==='s'+r.node_id){
+       const text=vector.label+' · nodo '+r.node_id+' · '+fmt(vector.value/1000)+' kN',x=p[0]+12,y=p[1]-15-i*17;
+       ctx.save();ctx.fillStyle='rgba(255,255,255,.92)';ctx.fillRect(x-3,y-12,ctx.measureText(text).width+6,16);ctx.restore();ctx.fillText(text,x,y);
+     }
+   }
  }
  ctx.restore();
 }

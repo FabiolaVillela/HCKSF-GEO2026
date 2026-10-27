@@ -64,3 +64,5 @@ El factor admite valores de 0 a 100000. La cámara de referencia se conserva par
 Verificación adicional del dibujo: `node --test tests/test_deformation.cjs`.
 
 La casilla **Mostrar reacciones en apoyos** permite activar flechas de la fuerza resultante global sobre los apoyos y consultar una tabla con Rx, Ry, Rz (kN) y Mx, My, Mz (kN·m). Inicia apagada y se actualiza con la etapa; se deshabilita mientras no hay equilibrio. Las flechas comparten una escala visual por etapa independiente del factor de deformada; los valores son reales. Los momentos se muestran en la tabla, no como flechas.
+
+El selector **Vectores de reacción** alterna entre **Resultante total** y **Componentes X, Y, Z** (X verde, Y rojo, Z azul), en ejes globales y con escala común. Las etiquetas de los vectores solo aparecen al seleccionar el apoyo correspondiente; las flechas permanecen visibles en todos los apoyos. En componentes se conserva el signo real de cada fuerza; la resultante se rotula con su magnitud.
