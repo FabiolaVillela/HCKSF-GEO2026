@@ -7,6 +7,8 @@ import json
 
 from .assembly import catalog, geometry_from_dxf, geometry_from_structure, progress_series, stage_plan, solve_stage
 from .demo_model import generate_demo_dome
+from .design_materials import material_catalog
+from .aisc import check_stage, check_all_stages
 
 ROOT=Path(__file__).resolve().parents[2]
 MAX_BODY=20*1024*1024
@@ -26,8 +28,9 @@ class Handler(BaseHTTPRequestHandler):
         path=urlsplit(self.path).path
         if path in ('/','/simulador.html'):
             return self.send(200,(ROOT/'simulador.html').read_bytes(),'text/html; charset=utf-8')
-        if path in ('/simulator.js','/deformation.js','/reactions.js'):
+        if path in ('/simulator.js','/deformation.js','/reactions.js','/aisc-view.js'):
             return self.send(200,(ROOT/'src/domestage/static'/path.lstrip('/')).read_bytes(),'text/javascript; charset=utf-8')
+        if path=='/api/design-materials': return self.send(200,material_catalog())
         if path=='/api/catalog': return self.send(200,catalog())
         if path=='/api/demo': return self.send(200,geometry_from_structure(generate_demo_dome(total_height=3.2)))
         self.send(404,{'message':'Ruta no disponible.'})
@@ -50,6 +53,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200,dict(geometry=geometry,report=report))
             payload=json.loads(body,parse_constant=lambda s: (_ for _ in ()).throw(ValueError('Número no finito.')))
             if not isinstance(payload,dict): raise ValueError('Se requiere un objeto JSON.')
+            if url.path in ('/api/aisc','/api/aisc/progress'):
+                cfg=payload.get('config') or {}
+                if url.path=='/api/aisc/progress':
+                    return self.send(200,check_all_stages(payload['geometry'],cfg,payload.get('design') or {}))
+                return self.send(200,check_stage(payload['geometry'],cfg,payload.get('stage',0),payload.get('design') or {}))
             if url.path=='/api/plan':
                 return self.send(200,stage_plan(payload['geometry'],payload.get('bars_per_step',2)))
             if url.path=='/api/progress':
