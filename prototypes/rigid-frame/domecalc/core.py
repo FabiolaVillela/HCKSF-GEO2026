@@ -190,4 +190,10 @@ def export(result, directory):
         writer=csv.writer(stream); writer.writerow(['element','i','j','layer','x_m','N_N','Vy_N','Vz_N','T_Nm','My_Nm','Mz_Nm'])
         for bar in result['elements']:
             for station in bar['stations']: writer.writerow([bar['id'],bar['i'],bar['j'],bar['layer'],station['x_m'],*station['N_Vy_Vz_T_My_Mz']])
-    (out/'report.md').write_text('# Análisis elástico lineal del domo\n\n'+ '\n'.join(f'- {k}: {v}' for k,v in result['summary'].items())+'\n\nUnidades SI. No incluye comprobaciones de resistencia, pandeo ni segundo orden.\n')
+    configuration = result.get('configuration', {})
+    settings = '\n'.join(f'- {key}: {configuration[key]}' for key in
+                         ('material', 'profile', 'connections', 'support_type', 'support_nodes', 'self_weight_model')
+                         if key in configuration)
+    (out/'report.md').write_text('# Análisis elástico lineal de la estructura\n\n'+settings+'\n\n'+
+                               '\n'.join(f'- {k}: {v}' for k,v in result['summary'].items())+
+                               '\n\nUnidades SI. No incluye comprobaciones de resistencia, pandeo ni segundo orden.\n')

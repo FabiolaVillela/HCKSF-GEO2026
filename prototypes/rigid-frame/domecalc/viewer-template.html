@@ -5,19 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
-<title>Viewer Fragment</title>
+<title>Estructura 3D · fuerzas y reacciones</title>
 <style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
 
 </head>
 <body>
-<iframe id="codex-visualization" sandbox="allow-scripts" referrerpolicy="no-referrer" title="Viewer Fragment" data-srcdoc="&lt;!doctype html&gt;
+<iframe id="codex-visualization" sandbox="allow-scripts" referrerpolicy="no-referrer" title="Estructura 3D · fuerzas y reacciones" data-srcdoc="&lt;!doctype html&gt;
 &lt;html lang=&quot;en&quot; data-visualize-standalone&gt;
 &lt;head&gt;
 &lt;meta charset=&quot;utf-8&quot;&gt;
 &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
 &lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
 &lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
-&lt;title&gt;Viewer Fragment&lt;/title&gt;
+&lt;title&gt;Estructura 3D · fuerzas y reacciones&lt;/title&gt;
 &lt;style&gt;:root {
   color-scheme: light dark;
   background-color: var(
@@ -1787,8 +1787,8 @@ html&gt;body{padding:0}&lt;/style&gt;
 })();
 &lt;/script&gt;
 &lt;div id=&quot;dome-interactive&quot;&gt;
-&lt;h3&gt;Domo · fuerzas y reacciones&lt;/h3&gt;
-&lt;div class=&quot;text-small text-muted&quot;&gt;Acero · HSS Ø4″ × 1/8″ · peso propio · análisis lineal&lt;/div&gt;
+&lt;h3&gt;Estructura 3D · fuerzas y reacciones&lt;/h3&gt;
+&lt;div class=&quot;text-small text-muted&quot; id=&quot;di-config&quot;&gt;Peso propio · análisis lineal&lt;/div&gt;
 &lt;div class=&quot;viz-controls&quot;&gt;
 &lt;label class=&quot;form-label&quot;&gt;Mostrar&lt;select class=&quot;form-select&quot; id=&quot;di-mode&quot;&gt;&lt;option value=&quot;axial&quot;&gt;Fuerzas axiales&lt;/option&gt;&lt;option value=&quot;reactions&quot;&gt;Reacciones en apoyos&lt;/option&gt;&lt;option value=&quot;geometry&quot;&gt;Geometría&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;
 &lt;label class=&quot;form-label&quot;&gt;Zoom &lt;span id=&quot;di-zoom-value&quot;&gt;100%&lt;/span&gt;&lt;input class=&quot;form-range&quot; id=&quot;di-zoom&quot; type=&quot;range&quot; min=&quot;40&quot; max=&quot;800&quot; value=&quot;100&quot;&gt;&lt;/label&gt;
@@ -1804,6 +1804,8 @@ html&gt;body{padding:0}&lt;/style&gt;
 &lt;script&gt;
 (()=&gt;{
 const root=document.getElementById(&#x27;dome-interactive&#x27;),D=JSON.parse(root.querySelector(&#x27;#di-data&#x27;).textContent),canvas=root.querySelector(&#x27;#di-canvas&#x27;),ctx=canvas.getContext(&#x27;2d&#x27;),mode=root.querySelector(&#x27;#di-mode&#x27;),zoom=root.querySelector(&#x27;#di-zoom&#x27;),pick=root.querySelector(&#x27;#di-pick&#x27;),detail=root.querySelector(&#x27;#di-detail&#x27;),legend=root.querySelector(&#x27;#di-legend&#x27;);
+const meta=D.meta||{};root.querySelector(&#x27;#di-config&#x27;).textContent=[meta.material,meta.profile,meta.connections,&#x27;Peso propio · análisis lineal&#x27;].filter(Boolean).join(&#x27; · &#x27;);
+const center=D.center||[0,0,7.5578],diameter=D.diameter||51;
 let q=[.87,.35,.12,.32],pan=[0,0],selected=&#x27;&#x27;,segments=[],points=[],supports=[],dragged=false;
 const pointers=new Map();let pinch=null;
 const fmt=(x,n=3)=&gt;x.toLocaleString(&#x27;es-MX&#x27;,{maximumFractionDigits:n,minimumFractionDigits:n});
@@ -1819,12 +1821,12 @@ function save(){if(window.openai?.setWidgetState)window.openai.setWidgetState({m
 restore(window.openai?.widgetState);
 function updateDetail(){
 detail.replaceChildren();if(!selected){detail.textContent=&#x27;Selecciona una barra o un apoyo.&#x27;;return;}
-const id=+selected.slice(1),bar=selected[0]===&#x27;b&#x27;;const title=document.createElement(&#x27;div&#x27;);title.textContent=bar?`Barra ${id} · nodos ${D.bars[id].i} → ${D.bars[id].j}`:`Apoyo articulado · nodo ${id}`;detail.append(title);
+const id=+selected.slice(1),bar=selected[0]===&#x27;b&#x27;;const title=document.createElement(&#x27;div&#x27;);title.textContent=bar?`Barra ${id} · nodos ${D.bars[id].i} → ${D.bars[id].j}`:`Apoyo ${D.nodes[id].rFixed?&quot;empotrado&quot;:&quot;articulado&quot;} · nodo ${id}`;detail.append(title);
 const table=document.createElement(&#x27;table&#x27;);table.className=&#x27;table table-sm tabular-nums&#x27;;const body=document.createElement(&#x27;tbody&#x27;);table.append(body);
 const row=(a,b)=&gt;{const tr=document.createElement(&#x27;tr&#x27;),th=document.createElement(&#x27;th&#x27;),td=document.createElement(&#x27;td&#x27;);th.scope=&#x27;row&#x27;;th.textContent=a;td.className=&#x27;text-end&#x27;;td.textContent=b;tr.append(th,td);body.append(tr);};
 if(bar){const e=D.bars[id];row(&#x27;Capa&#x27;,e.layer);row(&#x27;Longitud&#x27;,fmt(e.l)+&#x27; m&#x27;);row(&#x27;Axial en i&#x27;,fmt(e.n[0])+&#x27; kN&#x27;);row(&#x27;Axial al centro&#x27;,fmt(e.n[1])+&#x27; kN&#x27;);row(&#x27;Axial en j&#x27;,fmt(e.n[2])+&#x27; kN&#x27;);row(&#x27;Estado&#x27;,e.n.every(n=&gt;n&gt;=0)?&#x27;Tracción&#x27;:e.n.every(n=&gt;n&lt;=0)?&#x27;Compresión&#x27;:&#x27;Cambio de signo&#x27;);
 for(const n of [e.i,e.j])if(D.nodes[n].s){const r=D.nodes[n].r;row(&#x27;Reacción apoyo &#x27;+n+&#x27; · Rx / Ry / Rz&#x27;,r.slice(0,3).map(v=&gt;fmt(v)).join(&#x27; / &#x27;)+&#x27; kN&#x27;);}
-}else{const n=D.nodes[id];row(&#x27;Coordenadas X / Y / Z&#x27;,n.p.map(v=&gt;fmt(v)).join(&#x27; / &#x27;)+&#x27; m&#x27;);[&#x27;Rx&#x27;,&#x27;Ry&#x27;,&#x27;Rz&#x27;].forEach((label,i)=&gt;row(label,fmt(n.r[i])+&#x27; kN&#x27;));row(&#x27;Resultante&#x27;,fmt(Math.hypot(...n.r.slice(0,3)))+&#x27; kN&#x27;);row(&#x27;Mx / My / Mz&#x27;,n.r.slice(3).map(v=&gt;fmt(v,6)).join(&#x27; / &#x27;)+&#x27; kN·m&#x27;);row(&#x27;Restricciones&#x27;,&#x27;Ux, Uy, Uz; giros libres&#x27;);}
+}else{const n=D.nodes[id];row(&#x27;Coordenadas X / Y / Z&#x27;,n.p.map(v=&gt;fmt(v)).join(&#x27; / &#x27;)+&#x27; m&#x27;);[&#x27;Rx&#x27;,&#x27;Ry&#x27;,&#x27;Rz&#x27;].forEach((label,i)=&gt;row(label,fmt(n.r[i])+&#x27; kN&#x27;));row(&#x27;Resultante&#x27;,fmt(Math.hypot(...n.r.slice(0,3)))+&#x27; kN&#x27;);row(&#x27;Mx / My / Mz&#x27;,n.r.slice(3).map(v=&gt;fmt(v,6)).join(&#x27; / &#x27;)+&#x27; kN·m&#x27;);row(&#x27;Restricciones&#x27;,n.rFixed?&#x27;Ux, Uy, Uz y giros&#x27;:(meta.connections===&#x27;Articuladas&#x27;?&#x27;Ux, Uy, Uz; modelo sin GDL de giro&#x27;:&#x27;Ux, Uy, Uz; giros libres&#x27;));}
 detail.append(table);
 }
 function draw(){
@@ -1832,13 +1834,13 @@ const width=canvas.clientWidth,height=440,dpr=window.devicePixelRatio||1;canvas.
 const styles=getComputedStyle(root);const color=k=&gt;styles.getPropertyValue(k).trim();const fg=color(&#x27;--foreground&#x27;),muted=color(&#x27;--muted-foreground&#x27;),active=color(&#x27;--viz-series-1&#x27;),second=color(&#x27;--viz-series-2&#x27;);
 // Browser resolves theme color functions before they reach the canvas.
 const probe=document.createElement(&#x27;span&#x27;);probe.hidden=true;root.append(probe);const resolve=c=&gt;{probe.style.color=c;return getComputedStyle(probe).color;};const colors=[fg,muted,active,second].map(resolve);probe.remove();
-const scale=Math.min((width-32)/51,(height-45)/51)*(+zoom.value/100);
-function project(p){const r=rotate([p[0],p[1],p[2]-7.5578]);return [width/2+pan[0]+r[0]*scale,height/2+pan[1]-r[1]*scale,r[2]];}
+const scale=Math.min((width-32)/diameter,(height-45)/diameter)*(+zoom.value/100);
+function project(p){const r=rotate(p.map((v,j)=&gt;v-center[j]));return [width/2+pan[0]+r[0]*scale,height/2+pan[1]-r[1]*scale,r[2]];}
 points=D.nodes.map(n=&gt;project(n.p));supports=[];segments=D.bars.map((e,i)=&gt;({e,i,a:points[e.i],b:points[e.j]})).sort((a,b)=&gt;(a.a[2]+a.b[2])-(b.a[2]+b.b[2]));
 for(const {e,i,a,b} of segments){ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.lineWidth=selected===&#x27;b&#x27;+i?3:1.3;ctx.globalAlpha=selected===&#x27;b&#x27;+i?1:mode.value===&#x27;reactions&#x27;?.32:.8;ctx.strokeStyle=selected===&#x27;b&#x27;+i?colors[0]:mode.value===&#x27;axial&#x27;?(e.n[1]&lt;0?colors[3]:colors[2]):colors[1];ctx.stroke();}
 ctx.globalAlpha=1;
 for(let i=0;i&lt;D.nodes.length;i++)if(D.nodes[i].s){const p=points[i];supports.push({i,p});ctx.lineWidth=selected===&#x27;s&#x27;+i?3:1.3;ctx.strokeStyle=selected===&#x27;s&#x27;+i?colors[0]:colors[2];ctx.beginPath();ctx.moveTo(p[0],p[1]-3);ctx.lineTo(p[0]-6,p[1]+7);ctx.lineTo(p[0]+6,p[1]+7);ctx.closePath();ctx.stroke();
-if(mode.value===&#x27;reactions&#x27;){const r=D.nodes[i].r;const length=4/Math.max(...D.nodes.filter(n=&gt;n.s).map(n=&gt;Math.hypot(...n.r.slice(0,3))));const tip=project(D.nodes[i].p.map((v,j)=&gt;v+r[j]*length));ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(tip[0],tip[1]);const angle=Math.atan2(tip[1]-p[1],tip[0]-p[0]);ctx.lineTo(tip[0]-6*Math.cos(angle-.45),tip[1]-6*Math.sin(angle-.45));ctx.moveTo(tip[0],tip[1]);ctx.lineTo(tip[0]-6*Math.cos(angle+.45),tip[1]-6*Math.sin(angle+.45));ctx.stroke();}}
+if(mode.value===&#x27;reactions&#x27;){const r=D.nodes[i].r;const length=diameter*.08/Math.max(...D.nodes.filter(n=&gt;n.s).map(n=&gt;Math.hypot(...n.r.slice(0,3))));const tip=project(D.nodes[i].p.map((v,j)=&gt;v+r[j]*length));ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(tip[0],tip[1]);const angle=Math.atan2(tip[1]-p[1],tip[0]-p[0]);ctx.lineTo(tip[0]-6*Math.cos(angle-.45),tip[1]-6*Math.sin(angle-.45));ctx.moveTo(tip[0],tip[1]);ctx.lineTo(tip[0]-6*Math.cos(angle+.45),tip[1]-6*Math.sin(angle+.45));ctx.stroke();}}
 ctx.fillStyle=colors[0];ctx.font=&#x27;12px sans-serif&#x27;;if(selected){const id=+selected.slice(1),e=selected[0]===&#x27;b&#x27;?D.bars[id]:null,p=e?points[e.i].map((v,j)=&gt;(v+points[e.j][j])/2):points[id];const text=e?`Barra ${id} · N ${fmt(e.n[1])} kN`:`Apoyo ${id} · Rz ${fmt(D.nodes[id].r[2])} kN`;const tx=Math.max(8,Math.min(width-ctx.measureText(text).width-8,p[0]+10)),ty=Math.max(16,Math.min(height-12,p[1]-12));ctx.fillText(text,tx,ty);}
 // Global axis triad follows the same camera orientation.
 for(const [axis,label] of [[[1,0,0],&#x27;X&#x27;],[[0,1,0],&#x27;Y&#x27;],[[0,0,1],&#x27;Z&#x27;]]){const v=rotate(axis),x=30+v[0]*23,y=height-35-v[1]*23;ctx.strokeStyle=colors[1];ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(30,height-35);ctx.lineTo(x,y);ctx.stroke();ctx.fillText(label,x+3,y-3);}
