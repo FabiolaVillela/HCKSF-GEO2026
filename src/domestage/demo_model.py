@@ -109,8 +109,7 @@ def generate_demo_dome(
         if len(st_bars) > 0:
             target_node = st_bars.iloc[-1]["node_j"]
             loads_data.append((st, target_node, 0.0, 0.0, -981.0))
-        else:
-            loads_data.append((st, 0, 0.0, 0.0, 0.0))
+        # Stages without bars get no load row: validate_model rejects loads on absent stages.
     loads_df = pd.DataFrame(loads_data, columns=["stage", "node_id", "fx_n", "fy_n", "fz_n"])
 
     return StructureModel(
