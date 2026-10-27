@@ -64,7 +64,7 @@ class Handler(BaseHTTPRequestHandler):
             if url.path=='/api/plan':
                 return self.send(200,stage_plan(payload['geometry'],payload.get('bars_per_step',2)))
             if url.path=='/api/progress':
-                return self.send(200,progress_series(payload['geometry'],payload.get('config')))
+                return self.send(200,progress_series(payload['geometry'],payload.get('config'),payload.get('design')))
             if url.path=='/api/report':
                 report=build_report(payload['geometry'],payload.get('config'),payload.get('design'))
                 return self.send(200,report_xlsx(report,payload.get('language','en')),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')

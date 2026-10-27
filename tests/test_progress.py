@@ -36,3 +36,40 @@ def test_http_progress_endpoint():
     assert status == 200 and len(result) == 4
     assert result[-1]['status'] == 'stable'
     assert post('/api/progress', dict(config=config()))[0] == 400
+
+
+def test_progress_series_utilization_matches_aisc_check_per_stage():
+    from domestage.aisc import check_all_stages
+    model = tetrahedron()
+    cfg = {**config(), 'connection': 'empotrada', 'support': 'empotrado'}
+    design = {'grade': 'a500-21-c'}
+    series = progress_series(model, cfg, design)
+    checks = check_all_stages(model, cfg, design)
+    assert len(series) == len(checks)
+    for s, c in zip(series, checks):
+        assert s['utilization_status'] == 'aisc'
+        if s['status'] == 'stable':
+            assert s['max_utilization'] == pytest.approx(c['max_utilization'])
+            assert s['governing_bar'] == c['governing']['member_id']
+            assert s['governing_equation'] == c['governing']['equation']
+        else:
+            assert s['max_utilization'] is None
+
+
+def test_progress_series_utilization_not_computed_without_valid_inputs():
+    model = tetrahedron()
+    assert {s['utilization_status'] for s in progress_series(model, config())} == {'no_grade'}
+    assert all(s['max_utilization'] is None for s in progress_series(model, config()))
+    alu = progress_series(model, {**config(), 'material': 'Aluminio'}, {'grade': '6061-t6'})
+    assert {s['utilization_status'] for s in alu} == {'aluminum'}
+    worker = progress_series(model, {**config(), 'worker_kg': 80}, {'grade': 'a500-21-c'})
+    assert {s['utilization_status'] for s in worker} == {'installer'}
+    with pytest.raises(ValueError):
+        progress_series(model, config(), {'grade': 'not-a-grade'})
+
+
+def test_http_progress_endpoint_with_design():
+    payload = dict(geometry=tetrahedron(), config={**config(), 'connection': 'empotrada'}, design={'grade': 'a500-21-c'})
+    status, result = post('/api/progress', payload)
+    assert status == 200 and result[-1]['max_utilization'] is not None
+    assert post('/api/progress', {**payload, 'design': {'grade': 'not-a-grade'}})[0] == 400

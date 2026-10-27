@@ -180,6 +180,14 @@ const spanish={
   "Axial force (kN)": "Fuerza axial (kN)",
   "Max deflection (mm)": "Desplazamiento máximo (mm)",
   "Max deflection": "Desplazamiento máx",
+  "Maximum utilization vs % progress": "Utilización máxima vs % de avance",
+  "Max utilization": "Utilización máx",
+  "Maximum AISC utilization versus assembly progress": "Utilización máxima AISC frente al avance del montaje",
+  "Utilization (AISC 360-22, preliminary)": "Utilización (AISC 360-22, preliminar)",
+  "Limit U = 1.0": "Límite U = 1.0",
+  "Select a material grade (Structural Properties) to compute the utilization.": "Selecciona un grado de material (Propiedades estructurales) para calcular la utilización.",
+  "AISC 360 does not apply to aluminum.": "AISC 360 no aplica al aluminio.",
+  "Utilization needs the installer load set to 0 (1.4D, dead load only).": "La utilización requiere la carga del instalador en 0 (1.4D, solo carga muerta).",
   " (off scale, clipped)": " (fuera de escala, recortado)",
   "Maximum axial force versus assembly progress": "Fuerza axial máxima frente al avance del montaje",
   "Maximum deflection versus assembly progress": "Desplazamiento máximo frente al avance del montaje",
@@ -801,7 +809,9 @@ function niceMax(v){if(!(v>0))return 1;const p=10**Math.floor(Math.log10(v)),m=v
 function clearCharts(){++seriesToken;series=null;$('btn-charts-csv').disabled=true;$('btn-charts').disabled=false;$('charts-message').textContent=translate('Compute all stages to see how the maximum axial force and maximum deflection change as assembly progresses.');renderCharts();}
 const OUTLIER_FACTOR=20;
 function median(v){const a=[...v].sort((x,y)=>x-y),m=a.length>>1;return a.length%2?a[m]:(a[m-1]+a[m])/2;}
-function chart(svg,lines,unit,emptyText){
+// opts.limit: draw a reference line (e.g. utilization = 1) and paint points above it red.
+// opts.noData: message when the series exists but these lines have no values (e.g. no material grade).
+function chart(svg,lines,unit,emptyText,opts={}){
  svg.replaceChildren();const W=600,H=340,L=62,R=16,T=18,B=86,pw=W-L-R,ph=H-T-B;
  const useLog=$('chart-log').checked,useClip=$('chart-clip').checked;
  const x=p=>L+p/100*pw;
@@ -810,7 +820,9 @@ function chart(svg,lines,unit,emptyText){
  // Recorte: el eje se limita a OUTLIER_FACTOR × la mediana de los valores positivos.
  let cap=Infinity;
  if(useClip&&positive.length){const c=OUTLIER_FACTOR*median(positive);if(Math.max(...positive)>c)cap=c;}
- const inRange=values.filter(v=>v<=cap),dataMax=inRange.length?Math.max(...inRange):0;
+ const limit=Number.isFinite(opts.limit)?opts.limit:null;
+ if(limit!==null&&cap<limit)cap=limit; // never clip below the reference line
+ const inRange=values.filter(v=>v<=cap),dataMax=Math.max(inRange.length?Math.max(...inRange):0,limit??0);
  let edge=Infinity;
  let y,ticks;
  if(useLog&&positive.length){
@@ -820,32 +832,36 @@ function chart(svg,lines,unit,emptyText){
   y=v=>T+ph-(Math.log10(Math.max(v,lo))-Math.log10(lo))/span*ph;
   ticks=[];for(let e=Math.log10(lo);e<=Math.log10(hi)+1e-9;e++)ticks.push(10**e);
  }else{
-  const top=niceMax(dataMax*1.05);if(cap<Infinity)edge=top;
+  // With a reference line and every value below 1.25× it, use a 0.25-step axis up to 1.25× the limit.
+  const top=limit!==null&&dataMax<=limit*1.25?limit*1.25:niceMax(dataMax*1.05);if(cap<Infinity)edge=top;
   y=v=>T+ph-Math.min(v,top)/top*ph;ticks=[0,1,2,3,4,5].map(i=>top*i/5);
  }
  for(const v of ticks)svg.append(el('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),class:'chart-grid'}),el('text',{x:L-6,y:y(v)+4,'text-anchor':'end',class:'chart-label'},fmt(v,v<10?2:1)));
  if(edge<Infinity)svg.append(el('line',{x1:L,x2:W-R,y1:T,y2:T,stroke:'#F59E0B','stroke-width':1.5,'stroke-dasharray':'2 3'}));
  const yc=v=>v>cap?T:y(v);
+ if(limit!==null){svg.append(el('line',{x1:L,x2:W-R,y1:y(limit),y2:y(limit),stroke:'#DC2626','stroke-width':1.5,'stroke-dasharray':'6 4'}));
+  svg.append(el('text',{x:W-R-4,y:y(limit)-5,'text-anchor':'end','font-size':11,'font-weight':700,fill:'#B91C1C'},opts.limitLabel||String(limit)));}
  for(const p of [0,25,50,75,100])svg.append(el('line',{x1:x(p),x2:x(p),y1:T,y2:T+ph,class:'chart-grid'}),el('text',{x:x(p),y:T+ph+16,'text-anchor':'middle',class:'chart-label'},p+'%'));
  svg.append(el('line',{x1:L,x2:L,y1:T,y2:T+ph,class:'chart-axis'}),el('line',{x1:L,x2:W-R,y1:T+ph,y2:T+ph,class:'chart-axis'}));
  svg.append(el('text',{x:L+pw/2,y:T+ph+34,'text-anchor':'middle',class:'chart-title'},translate('Assembly progress (% of bars installed)')));
  svg.append(el('text',{x:14,y:T+ph/2,'text-anchor':'middle',class:'chart-title',transform:`rotate(-90 14 ${T+ph/2})`},unit+(useLog?' · log':'')));
  if(!series){svg.append(el('text',{x:L+pw/2,y:T+ph/2,'text-anchor':'middle',class:'chart-label'},translate(emptyText)));return 0;}
+ if(!values.length&&opts.noData){svg.append(el('text',{x:L+pw/2,y:T+ph/2,'text-anchor':'middle',class:'chart-label',fill:'#B45309'},opts.noData));return 0;}
  let clipped=0;
  for(const l of lines){
   let d='';let pen=false;
   for(const s of series){const v=s[l.key];if(v===null||v===undefined){pen=false;continue;}d+=(pen?'L':'M')+x(s.progress_pct).toFixed(1)+' '+yc(v).toFixed(1)+' ';pen=true;}
   if(d)svg.append(el('path',{d,fill:'none',stroke:l.color,'stroke-width':l.width||2,'stroke-opacity':l.opacity||1,'stroke-linejoin':'round'}));
-  for(const s of series){const v=s[l.key];if(v===null||v===undefined)continue;const px=x(s.progress_pct),label=`${l.label} · ${translate('Stage')} ${s.stage} · ${fmt(s.progress_pct,1)}% · ${fmt(v)} ${l.unit}`;
+  for(const s of series){const v=s[l.key];if(v===null||v===undefined)continue;const px=x(s.progress_pct),label=`${l.label} · ${translate('Stage')} ${s.stage} · ${fmt(s.progress_pct,1)}% · ${fmt(v)}${l.unit?' '+l.unit:''}`+(l.extra?l.extra(s):'');
    if(v>cap){if(l.width>3)continue;clipped++;const m=el('path',{d:`M${px-5} ${T+7} L${px+5} ${T+7} L${px} ${T-3} Z`,fill:'#F59E0B',stroke:'#B45309','stroke-width':1});m.append(el('title',{},label+translate(' (off scale, clipped)')));svg.append(m);continue;}
-   const c=el('circle',{cx:px,cy:y(v),r:l.width>3?0:2.6,fill:l.color});c.append(el('title',{},label));svg.append(c);}
+   const c=el('circle',{cx:px,cy:y(v),r:l.width>3?0:2.6,fill:limit!==null&&v>limit?'#DC2626':l.color});c.append(el('title',{},label));svg.append(c);}
  }
  for(const s of series)if(s.status!=='stable'&&s.status!=='empty'){const m=el('path',{d:`M${x(s.progress_pct)-4} ${T+ph+1} L${x(s.progress_pct)+4} ${T+ph+1} L${x(s.progress_pct)} ${T+ph-7} Z`,fill:'#EF4444'});m.append(el('title',{},`${translate('Stage')} ${s.stage} · ${fmt(s.progress_pct,1)}% · ${s.status==='unstable'?translate('mechanism: no solution'):translate('error')}`));svg.append(m);}
  // Marker (not data): where the stage chosen with the slider sits on the progress axis.
  const cur=plan[currentStage];if(cur){const cx=x(cur.progress_pct),right=cx<L+pw-80;
   svg.append(el('line',{x1:cx,x2:cx,y1:T,y2:T+ph,stroke:'#00C853','stroke-width':2,'stroke-dasharray':'5 4'}));
   svg.append(el('text',{x:right?cx+5:cx-5,y:T+12,'text-anchor':right?'start':'end','font-size':11,'font-weight':700,fill:'#00873A'},`${translate('Stage')} ${cur.stage} · ${fmt(cur.progress_pct,1)}%`));}
- const legend=[...lines.filter(l=>!l.hideLegend),{label:translate('Stage without solution'),color:'#EF4444',marker:true},...(clipped?[{label:translate('Clipped (> {cap} {unit})',{cap:fmt(cap,1),unit:lines[0].unit}),color:'#F59E0B',marker:true}]:[]),{label:translate('Selected stage (slider)'),color:'#00C853',dash:true}];
+ const legend=[...lines.filter(l=>!l.hideLegend),{label:translate('Stage without solution'),color:'#EF4444',marker:true},...(clipped?[{label:translate('Clipped (> {cap} {unit})',{cap:fmt(cap,1),unit:lines[0].unit}),color:'#F59E0B',marker:true}]:[]),...(limit!==null?[{label:opts.limitLabel||String(limit),color:'#DC2626',dash:true}]:[]),{label:translate('Selected stage (slider)'),color:'#00C853',dash:true}];
  // Leyenda en filas debajo del eje X: nunca tapa los datos.
  let gx=L,ly=T+ph+52;
  for(const l of legend){const w=30+l.label.length*6.2;if(gx+w>W-R){gx=L;ly+=17;}
@@ -855,20 +871,25 @@ function chart(svg,lines,unit,emptyText){
 }
 function renderCharts(){
  let clipped=chart($('chart-force'),[{key:'max_force_kn',label:translate('Max |F| (envelope)'),color:'#0B2265',width:7,opacity:.18,unit:'kN'},{key:'max_tension_kn',label:translate('Max tension'),color:'#001B96',unit:'kN'},{key:'max_compression_kn',label:translate('Max compression'),color:'#EF4444',unit:'kN'}],translate('Axial force (kN)'),translate('No data yet'));
+ const mode=series?.[0]?.utilization_status;
+ const noUtil={no_grade:'Select a material grade (Structural Properties) to compute the utilization.',aluminum:'AISC 360 does not apply to aluminum.',installer:'Utilization needs the installer load set to 0 (1.4D, dead load only).'}[mode];
+ clipped+=chart($('chart-utilization'),[{key:'max_utilization',label:translate('Max utilization'),color:'#7C3AED',unit:'',extra:s=>s.governing_bar===null||s.governing_bar===undefined?'':` · ${translate('Bar #')}${s.governing_bar} · ${s.governing_equation||''}`}],translate('Utilization (AISC 360-22, preliminary)'),translate('No data yet'),{limit:1,limitLabel:translate('Limit U = 1.0'),noData:noUtil?translate(noUtil):null});
  clipped+=chart($('chart-displacement'),[{key:'max_displacement_mm',label:translate('Max deflection'),color:'#5A85D7',unit:'mm'}],translate('Max deflection (mm)'),translate('No data yet'));
  const note=$('charts-clip-note');if(note)note.textContent=series&&clipped?translate('{count} point(s) off scale, shown in orange on the top edge.',{count:clipped}):'';
 }
 for(const id of ['chart-log','chart-clip'])$(id).addEventListener('change',renderCharts);
+// The utilization chart depends on the material grade: changing it invalidates the computed series.
+for(const id of ['design-grade','design-fy','design-fu','design-source'])$(id)?.addEventListener('input',()=>{if(series)clearCharts();});
 $('btn-charts').onclick=async()=>{
  if(!geometry||!plan.length)return;const token=++seriesToken,rev=revision;$('btn-charts').disabled=true;
  $('charts-message').textContent=translate('Computing {count} stages…',{count:plan.length});
- try{const value=await api('/api/progress',{geometry,config:config()});if(token!==seriesToken||rev!==revision)return;series=value;
+ try{const value=await api('/api/progress',{geometry,config:config(),design:reportDesign()});if(token!==seriesToken||rev!==revision)return;series=value;
   const solved=series.filter(s=>s.status==='stable').length,unstable=series.filter(s=>s.status==='unstable').length;
   $('charts-message').textContent=translate('{solved} of {total} stages solved',{solved,total:series.length})+(unstable?translate(' · {unstable} with a mechanism (red triangles, no values)',{unstable}):'')+translate('. Hover over a point to see its stage.');
   $('btn-charts-csv').disabled=false;renderCharts();
  }catch(e){if(token!==seriesToken)return;$('charts-message').textContent=e.message;}finally{if(token===seriesToken)$('btn-charts').disabled=false;}
 };
-$('btn-charts-csv').onclick=()=>{if(!series)return;const cols=['stage','progress_pct','active_count','status','max_tension_kn','max_compression_kn','max_force_kn','max_displacement_mm'];const csv=[cols.join(','),...series.map(s=>cols.map(c=>s[c]===null||s[c]===undefined?'':s[c]).join(','))].join('\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'})),a=document.createElement('a');a.href=url;a.download='assembly-progress.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+$('btn-charts-csv').onclick=()=>{if(!series)return;const cols=['stage','progress_pct','active_count','status','max_tension_kn','max_compression_kn','max_force_kn','max_displacement_mm','max_utilization','governing_bar','governing_equation','utilization_status'];const csv=[cols.join(','),...series.map(s=>cols.map(c=>s[c]===null||s[c]===undefined?'':s[c]).join(','))].join('\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'})),a=document.createElement('a');a.href=url;a.download='assembly-progress.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 renderCharts();
 
 // Language changes preserve model, support overrides, selected element and display settings.
