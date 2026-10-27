@@ -7,6 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from .schema import StageResult, StructureModel
+from .deformation import nodal_positions
 
 
 def create_dome_3d_figure(
@@ -19,6 +20,9 @@ def create_dome_3d_figure(
     analysis_stable: bool = True,
     worker_node: Optional[int] = None,
     support_label: str = "articulado",
+    displacements: Optional[dict] = None,
+    show_deformed: bool = False,
+    deformation_scale: float = 10.,
 ) -> go.Figure:
     """Build an interactive 3D wireframe plot representing the current installation stage."""
     fig = go.Figure()
@@ -27,6 +31,7 @@ def create_dome_3d_figure(
         row.node_id: (row.x, row.y, row.z)
         for _, row in model.nodes.iterrows()
     }
+    deformed = nodal_positions(nodes_dict,displacements,deformation_scale) if show_deformed and analysis_stable and displacements else {}
     active_set = set(active_bar_ids)
     new_set = set(new_bar_ids)
 
@@ -109,9 +114,21 @@ def create_dome_3d_figure(
                 line=dict(color=color, width=width),
                 hovertext=hover,
                 hoverinfo="text",
+                opacity=0.35 if deformed else 1.,
                 showlegend=False,
             )
         )
+
+    if deformed:
+        dx,dy,dz=[],[],[]
+        for _,bar in model.bars.iterrows():
+            if bar.bar_id not in active_set: continue
+            if bar.node_i not in deformed or bar.node_j not in deformed:
+                raise ValueError('Faltan desplazamientos de nodos activos.')
+            a,b=deformed[bar.node_i],deformed[bar.node_j]
+            dx.extend([a[0],b[0],None]);dy.extend([a[1],b[1],None]);dz.extend([a[2],b[2],None])
+        fig.add_trace(go.Scatter3d(x=dx,y=dy,z=dz,mode='lines',
+                      line=dict(color='#8B5CF6',width=4),name=f'Deformada nodal ×{deformation_scale:g}',hoverinfo='name'))
 
     # 3. Supports (Base nodes)
     support_ids = set(model.supports["node_id"])
@@ -150,11 +167,18 @@ def create_dome_3d_figure(
             )
         )
 
+    # Conservar los límites originales al amplificar: no compensar el factor con autozoom.
+    bounds = {}
+    for axis in ('x', 'y', 'z'):
+        lo, hi = model.nodes[axis].min(), model.nodes[axis].max()
+        pad = max((hi-lo)*0.05, 0.01)
+        bounds[axis] = [lo-pad, hi+pad]
     fig.update_layout(
+        uirevision="deformada-nodal",
         scene=dict(
-            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, title=""),
-            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, title=""),
-            zaxis=dict(showgrid=False, zeroline=False, showticklabels=False, title=""),
+            xaxis=dict(range=bounds["x"], autorange=False, showgrid=False, zeroline=False, showticklabels=False, title=""),
+            yaxis=dict(range=bounds["y"], autorange=False, showgrid=False, zeroline=False, showticklabels=False, title=""),
+            zaxis=dict(range=bounds["z"], autorange=False, showgrid=False, zeroline=False, showticklabels=False, title=""),
             bgcolor="rgba(10, 15, 29, 0.95)",
             aspectmode="data",
         ),

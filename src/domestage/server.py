@@ -26,8 +26,8 @@ class Handler(BaseHTTPRequestHandler):
         path=urlsplit(self.path).path
         if path in ('/','/simulador.html'):
             return self.send(200,(ROOT/'simulador.html').read_bytes(),'text/html; charset=utf-8')
-        if path=='/simulator.js':
-            return self.send(200,(ROOT/'src/domestage/static/simulator.js').read_bytes(),'text/javascript; charset=utf-8')
+        if path in ('/simulator.js','/deformation.js','/reactions.js'):
+            return self.send(200,(ROOT/'src/domestage/static'/path.lstrip('/')).read_bytes(),'text/javascript; charset=utf-8')
         if path=='/api/catalog': return self.send(200,catalog())
         if path=='/api/demo': return self.send(200,geometry_from_structure(generate_demo_dome(total_height=3.2)))
         self.send(404,{'message':'Ruta no disponible.'})
