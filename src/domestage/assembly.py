@@ -19,6 +19,7 @@ from domecalc.catalog import MATERIALS, HSS, properties
 from domecalc.core import Model, analyze
 from domecalc.truss import analyze_truss
 from domecalc.importer import inspect_dxf
+from .validity import chord_rotations, rotation_problem
 
 G = 9.80665
 MAX_NODES = 500
@@ -247,6 +248,15 @@ def _solve(geometry, config, stage):
         message = str(exc)
         unstable = isinstance(exc, np.linalg.LinAlgError) or any(w in message.lower() for w in ('inestable', 'condicionado', 'singular', 'unstable', 'mechanism'))
         result.update(stable=False if unstable else None, status='unstable' if unstable else 'error', message=message)
+        return result
+    shift = {active_nodes[node['id']]: node['displacement'][:3] for node in solved['nodes']}
+    rotations = chord_rotations([nodes[b['i']] for b in active], [nodes[b['j']] for b in active],
+                                [shift[b['i']] for b in active], [shift[b['j']] for b in active])
+    worst = int(np.argmax(rotations))
+    problem = rotation_problem(active[worst]['id'], float(rotations[worst]))
+    if problem:
+        # Shallow near-mechanism: report it as unsolved, like a mechanism, with no values.
+        result.update(stable=False, status='unstable', message=problem)
         return result
     solution = deepcopy(solved)
     for node in solution['nodes']: node['source_id'] = active_nodes[node['id']]
