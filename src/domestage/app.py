@@ -71,7 +71,12 @@ def model_figure(result, scale):
 
 
 st.set_page_config(page_title='Steel dome analysis', layout='wide')
-mode = st.sidebar.selectbox('Analysis mode', ['Construction stages (truss)', 'Completed dome (rigid frame)'], key='analysis_mode')
+mode = st.sidebar.selectbox('Analysis mode', ['Construction stages (truss)', 'Completed dome (rigid frame)',
+                                              'Dashboard (combined)'], key='analysis_mode')
+if mode == 'Dashboard (combined)':
+    from domestage.dashboard import render as render_dashboard
+    render_dashboard()
+    st.stop()
 if mode == 'Construction stages (truss)':
     from domestage.stage_app import render
     render()
