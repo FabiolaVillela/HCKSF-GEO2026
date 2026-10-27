@@ -72,3 +72,9 @@ La casilla **Mostrar reacciones en apoyos** permite activar flechas de la fuerza
 El selector **Vectores de reacción** alterna entre **Resultante total** y **Componentes X, Y, Z** (X verde, Y rojo, Z azul), en ejes globales y con escala común. Las etiquetas de los vectores solo aparecen al seleccionar el apoyo correspondiente; las flechas permanecen visibles en todos los apoyos. En componentes se conserva el signo real de cada fuerza; la resultante se rotula con su magnitud.
 
 El modo **Radial Rr, tangencial Rt, vertical Rz** usa como centro el promedio X/Y de todos los apoyos configurados, conservado entre etapas. Rr positivo apunta hacia afuera, Rt positivo es antihorario visto desde arriba (+Z) y Rz positivo apunta hacia arriba. Rr se dibuja verde, Rt rojo y Rz azul. La transformación proyecta las fuerzas globales en la base local de cada apoyo; no modifica el análisis. Para apoyos sobre el eje (radio ≤ 1e-9 m), Rr y Rt aparecen como no definidos; se conserva Rz. La tabla mantiene los momentos en ejes globales.
+
+### Verificación AISC por etapa — rama de revisión
+
+La casilla **Show AISC utilization (preliminary)** / **Mostrar utilización AISC (preliminar)** añade colores de utilización, máxima por etapa, detalle por barra y exportación independiente. Requiere seleccionar un grado de material; incluye A500/A500M-21 B/C y resistencias informativas de aluminio 6061-T4/T6. AISC se habilita solo para acero.
+
+Base autorizada: ANSI/AISC 360-22 LRFD, 1.4D, t=0.93t nominal, K=1, L entre nodos en ambos planos, An=Ag y U=1. Solo primer orden. No verifica estabilidad integral, cortante, torsión ni conexiones. Las fuerzas y desplazamientos originales conservan sus valores. Verde ≤1 significa únicamente dentro de las revisiones incluidas. [Ecuaciones, fuentes, ejemplos manuales, limitaciones y ejecución](docs/AISC.md).

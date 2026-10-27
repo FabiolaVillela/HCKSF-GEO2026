@@ -41,3 +41,17 @@ def test_deformation_preferences_do_not_change_stage_or_results():
     assert any('dibujado' in c.value for c in at.caption)
     at.checkbox(key='show_deformed').uncheck().run()
     assert at.number_input(key='deformation_scale').disabled
+
+
+def test_dashboard_aisc_is_independent_and_requires_dead_load_only():
+    import json
+    at=AppTest.from_file(str(APP),default_timeout=30).run()
+    assert not at.checkbox(key='show_aisc').value
+    at.selectbox(key='design_grade').select('a500-21-c').run()
+    before=json.dumps(at.session_state['visited'][0],sort_keys=True)
+    at.checkbox(key='show_aisc').check().run()
+    assert not at.exception
+    assert any(m.label=='Utilización máxima AISC de la etapa' for m in at.metric)
+    assert json.dumps(at.session_state['visited'][0],sort_keys=True)==before
+    at.slider(key='stage_idx').set_value(1).run()
+    assert not any(m.label=='Utilización máxima AISC de la etapa' for m in at.metric)

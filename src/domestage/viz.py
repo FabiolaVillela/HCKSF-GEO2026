@@ -102,6 +102,7 @@ def create_dome_3d_figure(
     displacements: Optional[dict] = None,
     show_deformed: bool = False,
     deformation_scale: float = 10.,
+    utilizations: Optional[dict] = None,
 ) -> go.Figure:
     """Build an interactive 3D wireframe plot representing the current installation stage."""
     fig = go.Figure()
@@ -176,6 +177,10 @@ def create_dome_3d_figure(
             width = 2.5
             status_text = f"Neutro ({force/1000:.2f} kN)"
 
+        if utilizations is not None:
+            utilization=utilizations.get(b_id)
+            color='#737373' if utilization is None else '#15803D' if utilization<=1 else '#DC2626'
+            status_text+=' · AISC preliminary: '+('N/A' if utilization is None else f'{utilization:.3f}')
         hover = (
             f"<b>Barra #{b_id}</b><br>"
             f"Nodos: {bar.node_i} ➔ {bar.node_j}<br>"
@@ -198,7 +203,7 @@ def create_dome_3d_figure(
             )
         )
 
-    if deformed:
+    if deformed and utilizations is None:
         dx,dy,dz=[],[],[]
         for _,bar in model.bars.iterrows():
             if bar.bar_id not in active_set: continue
@@ -208,6 +213,17 @@ def create_dome_3d_figure(
             dx.extend([a[0],b[0],None]);dy.extend([a[1],b[1],None]);dz.extend([a[2],b[2],None])
         fig.add_trace(go.Scatter3d(x=dx,y=dy,z=dz,mode='lines',
                       line=dict(color='#8B5CF6',width=4),name=f'Deformada nodal ×{deformation_scale:g}',hoverinfo='name'))
+
+    elif deformed:
+        for _,bar in model.bars.iterrows():
+            if bar.bar_id not in active_set: continue
+            if bar.node_i not in deformed or bar.node_j not in deformed:
+                raise ValueError('Faltan desplazamientos de nodos activos.')
+            a,b=deformed[bar.node_i],deformed[bar.node_j]
+            u=utilizations.get(bar.bar_id) if utilizations is not None else None
+            color=('#737373' if u is None else '#15803D' if u<=1 else '#DC2626') if utilizations is not None else '#8B5CF6'
+            fig.add_trace(go.Scatter3d(x=[a[0],b[0]],y=[a[1],b[1]],z=[a[2],b[2]],mode='lines',
+                          line=dict(color=color,width=4),name=f'Deformada nodal ×{deformation_scale:g}',hoverinfo='name',showlegend=False))
 
     # 3. Supports (Base nodes)
     support_ids = set(model.supports["node_id"])
