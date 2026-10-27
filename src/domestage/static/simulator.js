@@ -9,6 +9,8 @@ let supportOverrides = {}; // {node_id: 'articulado' | 'empotrado'}
 let language='en';
 try{language=localStorage.getItem('domestage-language')==='es'?'es':'en';}catch{}
 const spanish={
+  "Show Dimensions": "Mostrar dimensiones",
+  "Overall undeformed model: maximum horizontal span and total vertical height.": "Modelo completo sin deformar: extensión horizontal máxima y altura vertical total.",
   "Material grade:":"Grado de material:",
   "Source / certificate:":"Fuente / certificado:",
   "Show AISC utilization (preliminary)":"Mostrar utilización AISC (preliminar)",
@@ -477,6 +479,68 @@ function updateLegend(limits){
  document.querySelector('.force-gradient').style.background=`linear-gradient(90deg,${forceColor(-limits.compression,limits)} 0%,#facc15 50%,${forceColor(limits.tension/2,limits)} 75%,${forceColor(limits.tension,limits)} 100%)`;
 }
 
+// Overall dimensions use original geometry, independent of stage and visual deformation.
+const dimensionCache=new WeakMap();
+function modelDimensions(nodes){
+ if(!nodes.length)return null;
+ let low=nodes[0].z,high=low,span2=0,pair=[nodes[0],nodes[0]];
+ for(let i=0;i<nodes.length;i++){
+   low=Math.min(low,nodes[i].z);high=Math.max(high,nodes[i].z);
+   for(let j=i+1;j<nodes.length;j++){
+     const d=(nodes[i].x-nodes[j].x)**2+(nodes[i].y-nodes[j].y)**2;
+     if(d>span2){span2=d;pair=[nodes[i],nodes[j]];}
+   }
+ }
+ const apex=nodes.find(n=>n.z===high);
+ const diameter=Math.sqrt(span2),margin=Math.max(diameter,high-low,.01)*.12;
+ // Fixed world-space offsets: diameter lies in XY at the base elevation.
+ const normal=diameter?[-(pair[1].y-pair[0].y)/diameter,(pair[1].x-pair[0].x)/diameter]:[0,-1];
+ const edge=Math.max(...nodes.map(n=>n.x*normal[0]+n.y*normal[1]));
+ const offset=edge-pair[0].x*normal[0]-pair[0].y*normal[1]+margin;
+ const diameterLine=pair.map(n=>[n.x+normal[0]*offset,n.y+normal[1]*offset,low]);
+ // Place height one quarter-turn from the diameter's outward offset in plan.
+ const heightDirection=[-normal[1],normal[0]];
+ const centerXY=[(pair[0].x+pair[1].x)/2,(pair[0].y+pair[1].y)/2];
+ const reach=Math.max(...nodes.map(n=>(n.x-centerXY[0])*heightDirection[0]+(n.y-centerXY[1])*heightDirection[1]))+margin;
+ const x=centerXY[0]+reach*heightDirection[0],y=centerXY[1]+reach*heightDirection[1];
+ // Rotate both annotations +90 degrees about Z (counterclockwise from above).
+ const quarterTurn=([px,py,pz])=>[centerXY[0]-(py-centerXY[1]),centerXY[1]+(px-centerXY[0]),pz];
+ // Move only the diameter another half-turn around the dome's vertical axis.
+ const halfTurn=([px,py,pz])=>[2*centerXY[0]-px,2*centerXY[1]-py,pz];
+ const diameterAnchors=pair.map(n=>halfTurn(quarterTurn([n.x,n.y,low])));
+ const rotatedDiameterLine=diameterLine.map(p=>halfTurn(quarterTurn(p)));
+ const heightLine=[[x,y,low],[x,y,high]].map(quarterTurn);
+ const base=nodes.filter(n=>n.z===low).reduce((a,b)=>Math.hypot(a.x-heightLine[0][0],a.y-heightLine[0][1])<=Math.hypot(b.x-heightLine[0][0],b.y-heightLine[0][1])?a:b);
+ return {diameter,height:high-low,low,high,pair,apex,base,diameterAnchors,diameterLine:rotatedDiameterLine,heightLine};
+}
+function drawDimensions(center,scale,w,h){
+ if(!$('show-dimensions').checked||!geometry?.nodes.length)return;
+ if(!dimensionCache.has(geometry))dimensionCache.set(geometry,modelDimensions(geometry.nodes));
+ const d=dimensionCache.get(geometry);
+ const project=point=>{const p=rotate(point.map((v,i)=>v-center[i]));return [w/2+p[0]*scale,h/2-p[1]*scale];};
+ function dimension(start,end,line,text){
+   const a=project(start),b=project(end),A=project(line[0]),B=project(line[1]);
+   const dx=B[0]-A[0],dy=B[1]-A[1],length=Math.hypot(dx,dy);
+   ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(...a);ctx.lineTo(...A);ctx.moveTo(...b);ctx.lineTo(...B);ctx.stroke();
+   ctx.setLineDash([]);ctx.beginPath();ctx.moveTo(...A);ctx.lineTo(...B);ctx.stroke();
+   if(length>12){
+     const angle=Math.atan2(dy,dx);
+     for(const [point,t] of [[A,angle],[B,angle+Math.PI]]){
+       ctx.beginPath();ctx.moveTo(...point);ctx.lineTo(point[0]+7*Math.cos(t-.4),point[1]+7*Math.sin(t-.4));ctx.lineTo(point[0]+7*Math.cos(t+.4),point[1]+7*Math.sin(t+.4));ctx.closePath();ctx.fill();
+     }
+   }
+   const tw=ctx.measureText(text).width,tx=(A[0]+B[0])/2,ty=(A[1]+B[1])/2;
+   // Horizontal text centered over the continuous dimension line drawn above.
+   ctx.save();ctx.translate(tx,ty);
+   ctx.fillStyle='rgba(255,255,255,.96)';ctx.fillRect(-tw/2-5,-10,tw+10,20);
+   ctx.fillStyle='#334155';ctx.fillText(text,0,0);ctx.restore();
+ }
+ ctx.save();ctx.globalAlpha=1;ctx.strokeStyle='#334155';ctx.fillStyle='#334155';ctx.lineWidth=1;ctx.font='600 12px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+ dimension(d.diameterAnchors[0],d.diameterAnchors[1],d.diameterLine,'D: '+fmt(d.diameter)+' m');
+ dimension([d.base.x,d.base.y,d.base.z],[d.apex.x,d.apex.y,d.apex.z],d.heightLine,'H: '+fmt(d.height)+' m');
+ ctx.restore();
+}
+
 // 3D Canvas Rendering
 function draw(){
   const limits=forceLimits(current); updateLegend(limits);
@@ -541,9 +605,11 @@ function draw(){
 
   // 4. Reactions vectors from PR 11
   drawReactions();
+  drawDimensions(center,scale,w,h);
 }
 
 // Interaction Listeners
+$('show-dimensions').addEventListener('change',draw);
 $('element-select').addEventListener('change',()=>{selected=$('element-select').value; selectionDetail(); draw();});
 $('stage-slider').addEventListener('input',()=>{stop(); clearTimeout(sliderTimer); const stage=+$('stage-slider').value; pendingStage(stage); sliderTimer=setTimeout(()=>setStage(stage),130);});
 $('btn-prev').onclick=()=>{stop(); setStage(currentStage-1);};
