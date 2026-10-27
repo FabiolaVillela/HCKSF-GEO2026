@@ -30,7 +30,38 @@ window.AISCView=(()=>{
    if(family==='Aluminio')box.append(document.createTextNode(text(' Aluminum catalog strengths describe extruded, unwelded material only. AISC does not apply.',' Las resistencias de aluminio corresponden a material extruido sin afectación por soldadura. AISC no aplica.')));
  }
  function enabled(){return $('show-aisc').checked;}
- function color(id){if(!enabled())return null;const m=report?.members.find(m=>m.id===id);return m?.utilization===null||!m?'#737373':m.utilization<=1?'#15803D':'#DC2626';}
+ // Absolute utilization scale: the deliberate break above 1 distinguishes exceedance.
+ const utilizationStops=[[0,'#00ffff'],[.5,'#00aaff'],[.75,'#0000ff'],[1,'#000000']];
+ const exceedanceStops=[[1,'#ffff00'],[1.1,'#ff9900'],[1.25,'#ff0000']];
+ function utilizationColor(value){
+   if(!Number.isFinite(value)||value<0)return '#737373';
+   const stops=value<=1?utilizationStops:exceedanceStops;
+   if(value>=stops[stops.length-1][0])return stops[stops.length-1][1];
+   for(let i=1;i<stops.length;i++){
+     if(value<=stops[i][0]){
+       const [a,ca]=stops[i-1],[b,cb]=stops[i],t=(value-a)/(b-a);
+       return '#'+[1,3,5].map(j=>Math.round(parseInt(ca.slice(j,j+2),16)*(1-t)+parseInt(cb.slice(j,j+2),16)*t).toString(16).padStart(2,'0')).join('');
+     }
+   }
+   return stops[0][1];
+ }
+ function color(id){if(!enabled())return null;return utilizationColor(report?.members.find(m=>m.id===id)?.utilization);}
+ function renderColorLegend(){
+   const box=$('aisc-canvas-legend');box.replaceChildren();
+   box.style.cssText='width:100%;max-width:480px;';
+   const title=document.createElement('div');title.textContent=text('AISC utilization · preliminary','Utilización AISC · preliminar');box.append(title);
+   const ramp=document.createElement('div');
+   ramp.style.cssText='height:14px;border:1px solid #94a3b8;border-radius:3px;margin-top:6px;';
+   ramp.style.background='linear-gradient(90deg,'+[...utilizationStops,...exceedanceStops].map(([u,c])=>c+' '+(u/1.25*100)+'%').join(',')+')';box.append(ramp);
+   const ticks=document.createElement('div');ticks.style.cssText='position:relative;height:20px;font-variant-numeric:tabular-nums;';
+   for(const [value,label] of [[0,'0'],[.75,'0.75'],[1,'1.0'],[1.25,'≥1.25']]){
+     const tick=document.createElement('span');tick.textContent=label;
+     tick.style.cssText='position:absolute;left:'+(value/1.25*100)+'%;transform:translateX('+(value===0?'0':value===1.25?'-100%':'-50%')+');';ticks.append(tick);
+   }
+   box.append(ticks);
+   const note=document.createElement('div');note.style.fontSize='.72rem';note.textContent=text('1.0: black · >1.0: yellow → orange → red · Gray: no results','1.0: negro · >1.0: amarillo → naranja → rojo · Gris: sin resultados');box.append(note);
+ }
+
  async function api(path,data){const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const v=await r.json();if(!r.ok)throw Error(v.message||'Check failed');return v;}
  function payload(){const c=host.context();return{geometry:c.geometry,config:c.config,stage:c.stage,design:design()};}
  function update(){
@@ -58,10 +89,10 @@ window.AISCView=(()=>{
  function render(){
    if(!host)return;
    const c=host.context(),box=$('aisc-results'),note=$('aisc-summary');box.replaceChildren();
-   $('aisc-basis').textContent=text('ANSI/AISC 360-22 LRFD · 1.4D · t=0.93t nominal · K=1 · L=node-to-node · An=Ag · U=1 · first-order only. Shear, torsion, connections and Chapter C stability are not checked. Green ≤1: within included checks; red >1: exceeds; gray: unavailable. This is not a complete design approval.','ANSI/AISC 360-22 LRFD · 1.4D · t=0.93t nominal · K=1 · L=entre nodos · An=Ag · U=1 · Solo primer orden. No se revisan cortante, torsión, conexiones ni estabilidad del capítulo C. Verde ≤1: dentro de revisiones incluidas; rojo >1: excede; gris: no disponible. No constituye una aprobación integral de diseño.');
+   $('aisc-basis').textContent=text('ANSI/AISC 360-22 LRFD · 1.4D · t=0.93t nominal · K=1 · L=node-to-node · An=Ag · U=1 · first-order only. Shear, torsion, connections and Chapter C stability are not checked. Utilization ≤1: within included checks; >1: exceeds; gray: unavailable. This is not a complete design approval.','ANSI/AISC 360-22 LRFD · 1.4D · t=0.93t nominal · K=1 · L=entre nodos · An=Ag · U=1 · Solo primer orden. No se revisan cortante, torsión, conexiones ni estabilidad del capítulo C. Utilización ≤1: dentro de revisiones incluidas; >1: excede; gris: no disponible. No constituye una aprobación integral de diseño.');
    document.querySelector('.force-legend').hidden=enabled();
    $('aisc-canvas-legend').hidden=!enabled();
-   $('aisc-canvas-legend').textContent=text('AISC preliminary · green ≤1 (included checks) · red >1 · gray unavailable','AISC preliminar · verde ≤1 (revisiones incluidas) · rojo >1 · gris no disponible');
+   if(enabled())renderColorLegend();
    $('aisc-panel').hidden=!enabled();$('aisc-download').disabled=!report;
    note.textContent=!enabled()?text('AISC view off.','Vista AISC apagada.'):family!=='Acero'?text('AISC 360 is not applicable to aluminum.','AISC 360 no aplica al aluminio.'):!design().grade?text('Select a grade to check resistance.','Selecciona un grado para revisar resistencia.'):!c.current?.stable?text('Unavailable without stage equilibrium.','No disponible sin equilibrio de la etapa.'):error?error:report?summary(report):text('Checking selected stage…','Verificando etapa seleccionada…');
    if(!enabled()||!report)return;
