@@ -84,3 +84,17 @@ def test_unstable_stage_is_exported_as_a_result_not_an_error(tmp_path):
     export_results([mechanism], path)
     summary = pd.read_excel(path, sheet_name='Summary')
     assert not summary.stable[0] and pd.isna(summary.max_force_n[0]) and summary.message[0]
+
+
+def test_example_script_writes_a_readable_template(tmp_path):
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    script = Path(__file__).resolve().parents[1] / 'examples' / 'generate_dome.py'
+    out = tmp_path / 'dome.xlsx'
+    done = subprocess.run([sys.executable, str(script), '--rings', '3', '--sides', '8', '--out', str(out)],
+                          capture_output=True, text=True, check=True)
+    assert 'Wrote' in done.stdout
+    model = read_template(out)
+    assert len(model.bars) > 0 and len(model.supports) > 0
