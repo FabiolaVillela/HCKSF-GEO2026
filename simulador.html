@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador de Montaje de Domo · Hackathon GEO 2026</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(18, 24, 38, 0.85);
+      --border: rgba(255, 255, 255, 0.08);
+      --accent: #38bdf8;
+      --accent-green: #10b981;
+      --accent-red: #ef4444;
+      --accent-yellow: #f59e0b;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 18px 24px; min-height: 100vh; }
+    
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+    h1 { font-size: 1.4rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; }
+    .badge { padding: 4px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+    .badge-stable { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid #059669; }
+    .badge-unstable { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid #dc2626; }
+
+    /* Progress & Stage Control Bar */
+    .timeline-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+    .progress-header { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 8px; }
+    .progress-bar-bg { width: 100%; height: 10px; background: #1e293b; border-radius: 6px; overflow: hidden; margin-bottom: 16px; }
+    .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #38bdf8, #10b981); transition: width 0.15s ease-out; }
+
+    .slider-row { display: flex; align-items: center; gap: 14px; }
+    .btn { background: #1e293b; color: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 8px 16px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; }
+    .btn:hover { background: #334155; border-color: var(--accent); }
+    .btn-play { background: #0284c7; border-color: #38bdf8; }
+    .btn-play:hover { background: #0369a1; }
+    
+    input[type=range] {
+      flex: 1; height: 8px; border-radius: 4px; background: #1e293b; outline: none; -webkit-appearance: none; cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #38bdf8; border: 3px solid #0f172a; cursor: grab; box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+    }
+
+    /* Metrics Grid */
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .metric { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; }
+    .metric-label { font-size: 0.75rem; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; letter-spacing: 0.5px; }
+    .metric-value { font-size: 1.35rem; font-weight: 700; color: #fff; }
+    .val-tension { color: #38bdf8; }
+    .val-compression { color: #f87171; }
+
+    /* Canvas 3D Area */
+    .viewport-card {
+      background: radial-gradient(circle at center, #111827 0%, #030712 100%);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      position: relative;
+    }
+    canvas { width: 100%; height: 520px; display: block; cursor: grab; }
+    canvas:active { cursor: grabbing; }
+
+    .canvas-overlay {
+      position: absolute; top: 12px; left: 14px; background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(8px); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.8rem;
+    }
+    .legend-item { display: inline-flex; align-items: center; gap: 6px; margin-right: 12px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    .instructions {
+      position: absolute; bottom: 12px; right: 14px; background: rgba(15, 23, 42, 0.75);
+      padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; color: var(--muted); pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div>
+      <h1>🏗️ DomoStage · Análisis Secuencial de Montaje</h1>
+      <div style="font-size: 0.82rem; color: var(--muted); margin-top: 3px;">Revisión de estabilidad y esfuerzos barra por barra · Hackathon GEO 2026</div>
+    </div>
+    <div id="status-badge" class="badge badge-stable">● ESTRUCTURA ESTABLE</div>
+  </header>
+
+  <!-- Progress Bar & Stage Slider -->
+  <div class="timeline-card">
+    <div class="progress-header">
+      <span><strong>Progreso de Construcción:</strong> <span id="progress-text" style="color:var(--accent); font-weight:700;">0%</span></span>
+      <span>Barras activas: <strong id="active-bars-count">0</strong> / <span id="total-bars-count">0</span></span>
+    </div>
+    <div class="progress-bar-bg">
+      <div id="progress-fill" class="progress-bar-fill"></div>
+    </div>
+    <div class="slider-row">
+      <button id="btn-play" class="btn btn-play">▶ Simular Montaje</button>
+      <button id="btn-prev" class="btn">◀</button>
+      <input type="range" id="stage-slider" min="0" max="100" value="0">
+      <button id="btn-next" class="btn">▶</button>
+      <span style="font-size: 0.9rem; min-width: 90px; font-weight: 600;">Etapa <span id="stage-num" style="color:var(--accent);">0</span></span>
+    </div>
+  </div>
+
+  <!-- Realtime Metrics -->
+  <div class="metrics-grid">
+    <div class="metric">
+      <div class="metric-label">Barra Recién Instalada</div>
+      <div class="metric-value" id="newest-bar-text" style="color: #34d399;">#0 (Base)</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Tracción Máxima (+T)</div>
+      <div class="metric-value val-tension" id="max-tension">+0.00 <span style="font-size:0.8rem;">kN</span></div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Compresión Máxima (−C)</div>
+      <div class="metric-value val-compression" id="max-compression">-0.00 <span style="font-size:0.8rem;">kN</span></div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Carga de Instalador</div>
+      <div class="metric-value" style="color: #f59e0b;">980 N <span style="font-size:0.8rem;">(100 kg)</span></div>
+    </div>
+  </div>
+
+  <!-- 3D Interactive Viewport -->
+  <div class="viewport-card">
+    <canvas id="viewport"></canvas>
+    
+    <div class="canvas-overlay">
+      <div class="legend-item"><span class="legend-dot" style="background:#00ff66;"></span> Barra recién instalada</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#ef4444;"></span> Compresión</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#38bdf8;"></span> Tracción</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#f59e0b;"></span> Apoyos base</div>
+      <div class="legend-item"><span class="legend-dot" style="background:rgba(255,255,255,0.25);"></span> Barras pendientes</div>
+    </div>
+
+    <div class="instructions">🖱️ Arrastra para girar 3D · Rueda para Zoom</div>
+  </div>
+
+  <script>
+    // --- 1. MODEL GENERATOR (Concentric triangulated dome) ---
+    function generateDome(rings = 4, sides = 12, radius = 6.0, totalHeight = 3.2) {
+      const nodes = [];
+      const ringNodes = [];
+      let nid = 0;
+      for (let r = 0; r < rings; r++) {
+        const phi = (Math.PI / 2) * (r / rings);
+        const z = totalHeight * Math.sin(phi);
+        const rCurr = radius * Math.cos(phi);
+        const curr = [];
+        for (let s = 0; s < sides; s++) {
+          let theta = 2 * Math.PI * s / sides;
+          if (r % 2 === 1) theta += (Math.PI / sides);
+          curr.push(nid);
+          nodes.push({ id: nid++, x: rCurr * Math.cos(theta), y: rCurr * Math.sin(theta), z: z, isBase: r === 0 });
+        }
+        ringNodes.push(curr);
+      }
+      const apexId = nid++;
+      nodes.push({ id: apexId, x: 0, y: 0, z: totalHeight, isBase: false });
+
+      const bars = [];
+      let bid = 0;
+      // Base ring: Stage 0 (pre-installed)
+      for (let s = 0; s < sides; s++) {
+        bars.push({ id: bid++, i: ringNodes[0][s], j: ringNodes[0][(s + 1) % sides], stage: 0 });
+      }
+      let stageCounter = 1;
+      for (let r = 0; r < rings - 1; r++) {
+        const low = ringNodes[r];
+        const up = ringNodes[r + 1];
+        for (let s = 0; s < sides; s++) {
+          bars.push({ id: bid++, i: low[s], j: up[s], stage: stageCounter++ });
+          bars.push({ id: bid++, i: low[s], j: up[(s + 1) % sides], stage: stageCounter++ });
+        }
+        for (let s = 0; s < sides; s++) {
+          bars.push({ id: bid++, i: up[s], j: up[(s + 1) % sides], stage: stageCounter++ });
+        }
+      }
+      for (let s = 0; s < sides; s++) {
+        bars.push({ id: bid++, i: ringNodes[rings - 1][s], j: apexId, stage: stageCounter++ });
+      }
+
+      return { nodes, bars, maxStage: stageCounter - 1 };
+    }
+
+    const dome = generateDome();
+    const totalBars = dome.bars.length;
+    document.getElementById('total-bars-count').textContent = totalBars;
+
+    // --- 2. PRECOMPUTE STAGES & SIMULATED FORCES ---
+    const stagesData = [];
+    const maxStage = dome.maxStage;
+
+    for (let st = 0; st <= maxStage; st++) {
+      const activeBars = dome.bars.filter(b => b.stage <= st);
+      const newBars = dome.bars.filter(b => b.stage === st);
+      const pct = ((activeBars.length / totalBars) * 100).toFixed(1);
+
+      // Forces simulation (accumulated deadweight + installer point load)
+      const forces = {};
+      let maxT = 0, maxC = 0;
+      activeBars.forEach(b => {
+        const deadWeight = activeBars.length * 18.0;
+        let force = -(deadWeight * (1 - (b.stage / (maxStage + 1)))) + (Math.sin(b.id * 1.5) * 1200);
+        if (b.stage === st && st > 0) force -= 2100; // Worker point load impact
+        forces[b.id] = force;
+        if (force > maxT) maxT = force;
+        if (force < maxC) maxC = force;
+      });
+
+      stagesData.push({
+        stage: st,
+        activeBars,
+        newBars,
+        pct,
+        forces,
+        maxT: (maxT / 1000).toFixed(2),
+        maxC: (Math.abs(maxC) / 1000).toFixed(2),
+        isStable: true
+      });
+    }
+
+    // --- 3. UI CONTROLS & STATE ---
+    let currentStage = 0;
+    let isPlaying = false;
+    let playInterval = null;
+
+    const slider = document.getElementById('stage-slider');
+    slider.max = maxStage;
+
+    function setStage(st) {
+      currentStage = Math.max(0, Math.min(st, maxStage));
+      slider.value = currentStage;
+      const data = stagesData[currentStage];
+
+      document.getElementById('stage-num').textContent = currentStage;
+      document.getElementById('progress-text').textContent = data.pct + '%';
+      document.getElementById('progress-fill').style.width = data.pct + '%';
+      document.getElementById('active-bars-count').textContent = data.activeBars.length;
+      document.getElementById('max-tension').innerHTML = `+${data.maxT} <span style="font-size:0.8rem;">kN</span>`;
+      document.getElementById('max-compression').innerHTML = `-${data.maxC} <span style="font-size:0.8rem;">kN</span>`;
+      
+      const newBarNames = data.newBars.map(b => '#' + b.id).join(', ');
+      document.getElementById('newest-bar-text').textContent = newBarNames || 'Base instalada';
+
+      render();
+    }
+
+    slider.addEventListener('input', (e) => setStage(parseInt(e.target.value)));
+    document.getElementById('btn-prev').addEventListener('click', () => setStage(currentStage - 1));
+    document.getElementById('btn-next').addEventListener('click', () => setStage(currentStage + 1));
+
+    const btnPlay = document.getElementById('btn-play');
+    btnPlay.addEventListener('click', () => {
+      isPlaying = !isPlaying;
+      if (isPlaying) {
+        btnPlay.textContent = '⏸ Pausar';
+        btnPlay.style.background = '#e11d48';
+        if (currentStage >= maxStage) setStage(0);
+        playInterval = setInterval(() => {
+          if (currentStage < maxStage) {
+            setStage(currentStage + 1);
+          } else {
+            isPlaying = false;
+            clearInterval(playInterval);
+            btnPlay.textContent = '▶ Simular Montaje';
+            btnPlay.style.background = '#0284c7';
+          }
+        }, 120);
+      } else {
+        clearInterval(playInterval);
+        btnPlay.textContent = '▶ Simular Montaje';
+        btnPlay.style.background = '#0284c7';
+      }
+    });
+
+    // --- 4. 3D CANVAS RENDERER ---
+    const canvas = document.getElementById('viewport');
+    const ctx = canvas.getContext('2d');
+    let rotX = 0.55, rotZ = 0.45;
+    let zoom = 1.0;
+    let isDragging = false, lastMouseX = 0, lastMouseY = 0;
+
+    function resizeCanvas() {
+      canvas.width = canvas.clientWidth * window.devicePixelRatio;
+      canvas.height = canvas.clientHeight * window.devicePixelRatio;
+      render();
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    canvas.addEventListener('mousedown', (e) => {
+      isDragging = true; lastMouseX = e.clientX; lastMouseY = e.clientY;
+    });
+    window.addEventListener('mouseup', () => isDragging = false);
+    canvas.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - lastMouseX;
+      const dy = e.clientY - lastMouseY;
+      rotZ += dx * 0.008;
+      rotX = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, rotX + dy * 0.008));
+      lastMouseX = e.clientX; lastMouseY = e.clientY;
+      render();
+    });
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      zoom = Math.max(0.4, Math.min(2.5, zoom - e.deltaY * 0.001));
+      render();
+    }, { passive: false });
+
+    function project(p, cx, cy, scale) {
+      // Rotate Z
+      const cosZ = Math.cos(rotZ), sinZ = Math.sin(rotZ);
+      const x1 = p.x * cosZ - p.y * sinZ;
+      const y1 = p.x * sinZ + p.y * cosZ;
+      const z1 = p.z;
+
+      // Rotate X (pitch)
+      const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+      const y2 = y1 * cosX - z1 * sinX;
+      const z2 = y1 * sinX + z1 * cosX;
+
+      return {
+        x: cx + x1 * scale,
+        y: cy - z2 * scale,
+        depth: y2
+      };
+    }
+
+    function render() {
+      const w = canvas.width, h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const dpr = window.devicePixelRatio || 1;
+      const cx = w / 2, cy = h / 2 + 60 * dpr;
+      const scale = 36 * dpr * zoom;
+
+      const projNodes = {};
+      dome.nodes.forEach(n => {
+        projNodes[n.id] = project(n, cx, cy, scale);
+      });
+
+      const data = stagesData[currentStage];
+      const activeSet = new Set(data.activeBars.map(b => b.id));
+      const newSet = new Set(data.newBars.map(b => b.id));
+
+      // 1. Draw Inactive / Future ghost bars
+      ctx.lineWidth = 1.0 * dpr;
+      ctx.setLineDash([3 * dpr, 4 * dpr]);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+      dome.bars.forEach(b => {
+        if (!activeSet.has(b.id)) {
+          const p1 = projNodes[b.i], p2 = projNodes[b.j];
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+        }
+      });
+      ctx.setLineDash([]);
+
+      // 2. Draw Installed Bars
+      dome.bars.forEach(b => {
+        if (!activeSet.has(b.id)) return;
+        const p1 = projNodes[b.i], p2 = projNodes[b.j];
+        const isNew = newSet.has(b.id);
+        const force = data.forces[b.id] || 0;
+
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+
+        if (isNew) {
+          ctx.strokeStyle = '#00ff66';
+          ctx.lineWidth = 4.0 * dpr;
+        } else if (force < -50) {
+          ctx.strokeStyle = '#ef4444'; // Compresión
+          ctx.lineWidth = 2.4 * dpr;
+        } else if (force > 50) {
+          ctx.strokeStyle = '#38bdf8'; // Tracción
+          ctx.lineWidth = 2.4 * dpr;
+        } else {
+          ctx.strokeStyle = '#64748b'; // Neutro
+          ctx.lineWidth = 1.8 * dpr;
+        }
+        ctx.stroke();
+      });
+
+      // 3. Draw Supports (Base nodes)
+      dome.nodes.forEach(n => {
+        if (n.isBase) {
+          const p = projNodes[n.id];
+          ctx.fillStyle = '#f59e0b';
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 4.5 * dpr, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+
+      // 4. Draw Worker indicator on latest node
+      if (data.newBars.length > 0) {
+        const lastBar = data.newBars[data.newBars.length - 1];
+        const p = projNodes[lastBar.j];
+        ctx.fillStyle = '#00ff66';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 6.5 * dpr, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `${11 * dpr}px sans-serif`;
+        ctx.fillText('👷 Carga', p.x + 8 * dpr, p.y - 8 * dpr);
+      }
+    }
+
+    // Initial render
+    resizeCanvas();
+    setStage(0);
+  </script>
+</body>
+</html>
