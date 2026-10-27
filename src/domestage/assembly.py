@@ -23,6 +23,7 @@ from .validity import chord_rotations, rotation_problem
 
 G = 9.80665
 MAX_NODES = 500
+DEFAULT_NODE_DEAD_LOAD_KG = 25.0
 
 
 def finite(value, name):
@@ -211,6 +212,10 @@ def _solve(geometry, config, stage):
     if not 0 <= worker_kg <= 10000:
         raise ValueError('Masa de instalador fuera de rango (0–10000 kg).')
 
+    node_dead_load_kg = finite(config.get('node_dead_load_kg', DEFAULT_NODE_DEAD_LOAD_KG), 'Carga muerta por nodo')
+    if not 0 <= node_dead_load_kg <= 10000:
+        raise ValueError('Carga muerta por nodo fuera de rango (0–10000 kg).')
+
     support_overrides = config.get('support_overrides', {})
 
     material, section = properties(material_name, profile_name)
@@ -218,15 +223,16 @@ def _solve(geometry, config, stage):
     by_id = {b['id']: b for b in bars}
     active = [by_id[bid] for bid in info['active_bar_ids']]
     mass = sum(math.dist(nodes[b['i']], nodes[b['j']]) for b in active) * material.density * section.A
+    active_nodes = sorted({n for b in active for n in (b['i'], b['j'])})
     worker_node = by_id[info['new_bar_ids'][-1]]['j'] if stage > 0 and info['new_bar_ids'] and worker_kg else None
 
     result = dict(**info, stable=None, status='empty', message='No hay barras instaladas en esta etapa.',
                  forces={}, reactions=[], displacements=[], elements=[], max_tension_kn=None, max_compression_kn=None,
                  max_displacement_mm=None, mass_kg=mass, worker_node=worker_node,
+                 node_dead_load_kg=node_dead_load_kg, node_dead_load_total_N=len(active_nodes)*node_dead_load_kg*G,
                  worker_load_N=worker_kg * G if worker_node is not None else 0,
                  material=material_name, profile=profile_name, connection=connection, support=support)
     if not active: return result
-    active_nodes = sorted({n for b in active for n in (b['i'], b['j'])})
     mapping = {nid: i for i, nid in enumerate(active_nodes)}
 
     support_conditions = {}
@@ -240,7 +246,10 @@ def _solve(geometry, config, stage):
                   [(mapping[b['i']], mapping[b['j']], 'montaje') for b in active],
                   support_conditions)
 
-    loads = {mapping[worker_node]: [0, 0, -worker_kg * G, 0, 0, 0]} if worker_node is not None else {}
+    # One additional gravity load per installed node, including supports.
+    loads = {mapping[n]: [0, 0, -node_dead_load_kg * G, 0, 0, 0] for n in active_nodes}
+    if worker_node is not None:
+        loads[mapping[worker_node]][2] -= worker_kg * G
     solver = analyze if connection == 'empotrada' else analyze_truss
     try:
         solved = solver(model, material, section, nodal_loads=loads)
