@@ -24,6 +24,10 @@ const spanish={
   "INITIALIZING": "INICIALIZANDO",
   "📁 1. CAD Geometry & DXF": "📁 1. Geometría CAD y DXF",
   "Upload DXF Wireframe:": "Importar estructura DXF:",
+  "Current model:": "Modelo actual:",
+  "↺ Use default model": "↺ Usar modelo por defecto",
+  "(default)": "(por defecto)",
+  "Loading default model…": "Cargando modelo por defecto…",
   "Drawing Units:": "Unidades del dibujo:",
   "Auto-detect": "Detectar automáticamente",
   "Millimeters (mm)": "Milímetros (mm)",
@@ -702,7 +706,7 @@ async function importDXF(){
   supportOverrides={}; setMessage("Reading DXF wireframe connectivity…");
   try{
     const value=await api('/api/import?units='+encodeURIComponent($('dxf-units').value)+'&tolerance='+encodeURIComponent(+$('dxf-tolerance').value/1000),null,{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:await file.arrayBuffer()});
-    if(rev!==revision)return; geometry=value.geometry;
+    if(rev!==revision)return; geometry=value.geometry; setModelSource(file.name,false);
     populateSupports(); await replan(true);
   }catch(e){
     if(rev!==revision)return; badge("INVALID DXF",'error'); setMessage(e.message);
@@ -729,6 +733,25 @@ $('download-report').onclick=async()=>{
   }catch(e){$('message').textContent=e.message;}
   finally{button.disabled=false; button.innerHTML=label;}
 };
+
+// Default model (QuickDome) loaded at start; an uploaded DXF replaces it until the user restores it.
+let modelSource={name:'',isDefault:true};
+function setModelSource(name,isDefault){
+  modelSource={name,isDefault};
+  $('model-source').textContent=name+(isDefault?' '+translate('(default)'):'');
+  $('btn-default-model').hidden=isDefault;
+}
+async function loadDefaultModel(){
+  const rev=++revision; stop(); calculated.clear(); clearCharts(); geometry=null; plan=[]; clearAnalysis();
+  supportOverrides={}; setMessage("Loading default model…");
+  const value=await api('/api/default-model');
+  if(rev!==revision)return;
+  geometry=value.geometry; setModelSource(value.name,true);
+  $('dxf-file-input').value='';
+  populateSupports(); await replan(true);
+}
+$('btn-default-model').addEventListener('click',()=>loadDefaultModel().catch(e=>{badge("ERROR",'error');setMessage(e.message);}));
+
 $('download-stage').onclick=()=>{
   if(!current)return;
   const blob=new Blob([JSON.stringify({geometry,config:config(),result:current},null,2)],{type:'application/json'}), url=URL.createObjectURL(blob), a=document.createElement('a');
@@ -860,6 +883,7 @@ $('language-select').addEventListener('change',()=>{
  const stage=plan[currentStage];
  if(stage)$('newest-bar-text').textContent=stage.new_bar_ids.length?stage.new_bar_ids.map(i=>translate('Bar #')+i).join(', '):translate('Base Ring Installed');
  renderCharts();
+ if(modelSource.name)setModelSource(modelSource.name,modelSource.isDefault);
 });
 window.AISCView.init({context:()=>({geometry,config:config(),current,stage:currentStage,language}),redraw:()=>{selectionDetail();draw();history();},format:fmt});
 translateStatic();
@@ -871,8 +895,7 @@ translateStatic();
     for(const item of c.profiles)$('sel-profile').append(new Option(item,item));
     $('sel-profile').selectedIndex=2;
     for(const item of c.materials)$('sel-material').append(new Option(translate(item),item));
-    geometry=await api('/api/demo');
-    populateSupports(); await replan(true);
+    await loadDefaultModel();
   }catch(e){
     badge("SERVER OFFLINE",'error'); setMessage(e.message+translate(" · Run: PYTHONPATH=src python -m domestage.server"));
   }

@@ -122,7 +122,8 @@ def geometry_from_structure(model):
 
 
 def geometry_from_dxf(content, units=None, tolerance=0.001):
-    inspection = inspect_dxf(content, units or 'auto', tolerance, ())
+    # None lets the importer use the units declared in the DXF ($INSUNITS); 'auto' is not a unit it accepts.
+    inspection = inspect_dxf(content, None if units in (None, '', 'auto') else units, tolerance, ())
     if inspection.report['errors']:
         raise ValueError('; '.join(inspection.report['errors']))
     model = inspection.model
