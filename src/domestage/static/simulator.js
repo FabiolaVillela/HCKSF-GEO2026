@@ -11,6 +11,13 @@ try{language=localStorage.getItem('domestage-language')==='es'?'es':'en';}catch{
 const spanish={
   "Show Dimensions": "Mostrar dimensiones",
   "Overall undeformed model: maximum horizontal span and total vertical height.": "Modelo completo sin deformar: extensión horizontal máxima y altura vertical total.",
+  "Material grade:":"Grado de material:",
+  "Source / certificate:":"Fuente / certificado:",
+  "Show AISC utilization (preliminary)":"Mostrar utilización AISC (preliminar)",
+  "Check all stages":"Verificar todas las etapas",
+  "Export AISC report":"Exportar reporte AISC",
+  "AISC stage and member results":"Resultados AISC por etapa y barra",
+  "AISC basis":"ANSI/AISC 360-22 LRFD · 1.4D · t=0.93t nominal · K=1 · L=entre nodos · An=Ag · U=1 · Solo primer orden. No se revisan cortante, torsión, conexiones ni estabilidad del capítulo C. Verde ≤1: dentro de las revisiones incluidas; rojo >1: excede; gris: no disponible. No constituye una aprobación integral de diseño.",
   "Language": "Idioma",
   "🏗️ GEOMETRICA · Steel Dome Construction Analysis": "🏗️ GEOMETRICA · Análisis de construcción de domos de acero",
   "Stage-by-stage structural simulation · Self-weight linear elastic equilibrium": "Simulación estructural por etapas · Equilibrio elástico lineal por peso propio",
@@ -327,6 +334,7 @@ function selectionDetail(){
       [translate("Axial Force (i / mid / j)"), [s[0], s[Math.floor(s.length/2)], s[s.length-1]].map(v=>fmt(v.N_Vy_Vz_T_My_Mz[0]/1000)).join(' / ')+' kN'],
       [translate("Bending Moment My / Mz (mid)"), s[Math.floor(s.length/2)].N_Vy_Vz_T_My_Mz.slice(4).map(v=>fmt(v/1000)).join(' / ')+' kN·m']
     ]));
+    window.AISCView?.appendMember(box,id);
   }else{
     const r=current.reactions.find(r=>r.node_id===id);
     const cond = supportOverrides[id] || config().support;
@@ -358,6 +366,7 @@ function history(){
     }
   }
   div.append(t);
+  window.AISCView?.appendHistory(div,plan);
 }
 
 // PR 11 Deformation & Reactions integration
@@ -407,6 +416,7 @@ function reactionTable(show, radial){
 }
 
 function updateDeformation(){
+  window.AISCView?.update();
   updateReactions();
   const state=deformationView(), factor=$('deformation-factor');
   $('show-deformation').disabled=!state.available;
@@ -462,7 +472,7 @@ function forceColor(force,limits){
  return '#'+from.map((v,i)=>Math.round(v+(to[i]-v)*ratio).toString(16).padStart(2,'0')).join('');
 }
 function updateLegend(limits){
- $('force-scale').hidden=!current?.stable;$('force-unavailable').hidden=!!current?.stable;
+ $('force-scale').hidden=!current?.stable||!!window.AISCView?.enabled();$('force-unavailable').hidden=!!current?.stable;
  $('force-min').textContent=(limits.compression?'≤ −':'')+fmt(limits.compression/1000);
  $('force-max').textContent=(limits.tension?'≥ +':'')+fmt(limits.tension/1000);
  // A side with no forces stays yellow rather than implying nonexistent loads.
@@ -564,7 +574,7 @@ function draw(){
     if(isSelected||(installed&&fresh.has(s.b.id))){
       ctx.strokeStyle=isSelected?'#000000':'#FF00FF'; ctx.lineWidth=isSelected?7:6; ctx.stroke();
     }
-    ctx.strokeStyle=!installed?'#CACACA':forceColor(f,limits);
+    ctx.strokeStyle=!installed?'#CACACA':(window.AISCView?.color(s.b.id)||forceColor(f,limits));
     ctx.lineWidth=installed?3:1; ctx.stroke();
   }
   ctx.globalAlpha=1;
@@ -579,6 +589,7 @@ function draw(){
     deformedSegments=geometry.bars.filter(b=>active.has(b.id)).map(b=>({b, a:deformedProjection.get(b.i), z:deformedProjection.get(b.j)})).sort((a,b)=>(a.a[2]+a.z[2])-(b.a[2]+b.z[2]));
     ctx.setLineDash([]); ctx.strokeStyle='#7C3AED';
     for(const s of deformedSegments){
+      ctx.strokeStyle=window.AISCView?.color(s.b.id)||'#7C3AED';
       ctx.lineWidth=selected==='b'+s.b.id?4.5:2.5;
       ctx.beginPath(); ctx.moveTo(s.a[0],s.a[1]); ctx.lineTo(s.z[0],s.z[1]); ctx.stroke();
     }
@@ -820,6 +831,7 @@ $('language-select').addEventListener('change',()=>{
  if(stage)$('newest-bar-text').textContent=stage.new_bar_ids.length?stage.new_bar_ids.map(i=>translate('Bar #')+i).join(', '):translate('Base Ring Installed');
  renderCharts();
 });
+window.AISCView.init({context:()=>({geometry,config:config(),current,stage:currentStage,language}),redraw:()=>{selectionDetail();draw();history();},format:fmt});
 translateStatic();
 
 // Boot

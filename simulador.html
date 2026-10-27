@@ -262,6 +262,9 @@
         <span class="control-label"><span data-i18n="Steel Material:">Steel Material:</span></span>
         <select id="sel-material"></select>
       </div>
+      <div class="control-row"><label class="control-label" for="design-grade" data-i18n="Material grade:">Material grade:</label><select id="design-grade"><option value="">Select grade…</option></select></div>
+      <div id="design-custom" hidden><label>Fy (MPa) <input id="design-fy" type="number" min="0" step="any"></label><label>Fu (MPa) <input id="design-fu" type="number" min="0" step="any"></label><label data-i18n="Source / certificate:">Source / certificate:</label><input id="design-source" type="text" maxlength="1000"></div>
+      <div id="design-properties" role="status" style="font-size:.8rem;overflow-wrap:anywhere"></div>
       <div class="control-row">
         <span class="control-label"><span data-i18n="HSS Pipe Section:">HSS Pipe Section:</span></span>
         <select id="sel-profile"></select>
@@ -381,10 +384,19 @@
     <span id="deformation-note" role="status" aria-live="polite" style="color:var(--gray-71); margin-left:auto;"><span data-i18n="Deflection view off (values are true scale).">Deflection view off (values are true scale).</span></span>
   </div>
 
+  <section class="viz-options-strip" id="aisc-controls">
+    <label><input id="show-aisc" type="checkbox"> <strong data-i18n="Show AISC utilization (preliminary)">Show AISC utilization (preliminary)</strong></label>
+    <button class="btn" id="aisc-all" disabled data-i18n="Check all stages">Check all stages</button>
+    <button class="btn" id="aisc-download" disabled data-i18n="Export AISC report">Export AISC report</button>
+    <span id="aisc-summary" role="status" aria-live="polite"></span>
+    <div style="width:100%;font-size:.8rem" id="aisc-basis">ANSI/AISC 360-22 LRFD · 1.4D · t=0.93t nominal · K=1 · L=node-to-node · An=Ag · U=1 · first-order only. Shear, torsion, connections and Chapter C stability are not checked. Green ≤1: within included checks; red >1: exceeds; gray: unavailable. This is not a complete design approval.</div>
+  </section>
+  <details id="aisc-panel" hidden class="inspector-card"><summary data-i18n="AISC stage and member results">AISC stage and member results</summary><div id="aisc-results" style="overflow:auto;max-height:320px"></div></details>
   <!-- 3D Interactive Viewport -->
   <div class="viewport-card">
     <canvas id="viewport" role="img" aria-label="3D structure viewport. Drag to orbit, wheel to zoom, click to inspect." data-i18n-aria-label="3D structure viewport. Drag to orbit, wheel to zoom, click to inspect."></canvas>
     <div class="canvas-overlay">
+      <div id="aisc-canvas-legend" hidden></div>
       <div class="force-legend">
         <div><span data-i18n="Midpoint axial force · kN · 80% saturation per stage">Midpoint axial force · kN · 80% saturation per stage</span></div>
         <div id="force-scale"><div class="force-gradient"></div>
@@ -454,6 +466,7 @@
 </style>
   <script src="/deformation.js"></script>
   <script src="/reactions.js"></script>
+  <script src="/aisc-view.js"></script>
   <script src="/simulator.js"></script>
 </body>
 </html>

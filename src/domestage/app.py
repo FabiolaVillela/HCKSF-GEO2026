@@ -13,6 +13,7 @@ import streamlit.components.v1 as components
 import pandas as pd
 from domestage.assembly import (catalog,geometry_from_dxf,geometry_from_structure,stage_plan,solve_stage)
 from domestage.demo_model import generate_demo_dome
+from domestage.design_dashboard import select_design,render_design
 from domecalc.importer import declared_units,UNITS
 from domecalc.viewer import export_viewer
 
@@ -54,6 +55,7 @@ with st.sidebar:
         with st.expander('Diagnóstico DXF'):st.json(report)
     c=catalog()
     material=st.selectbox('Material',c['materials'])
+    design=select_design(material)
     profile=st.selectbox('Perfil HSS',c['profiles'],index=2)
     connection=st.radio('Conexiones',['articulada','empotrada'],format_func=lambda s:s.capitalize())
     support=st.radio('Apoyos',['articulado','empotrado'],format_func=lambda s:s.capitalize())
@@ -102,6 +104,7 @@ if show_deformed and result['stable']:
     st.caption(f'Máximo real: {real:.3f} mm → dibujado: {real*deformation_scale:.3f} mm (×{deformation_scale:g}). La referencia permanece visible; se unen los nodos desplazados con barras rectas.')
 elif not result['stable']:
     st.caption('La deformada no está disponible sin equilibrio de la etapa.')
+utilizations=render_design(result,geometry,config,design)
 # Mantener el visualizador del equipo si Plotly está instalado.
 try:
     from domestage.viz import create_dome_3d_figure,create_history_chart
@@ -117,7 +120,7 @@ if create_dome_3d_figure:
                               pd.Series({int(k):v for k,v in result['forces'].items()},dtype=float) if result['stable'] else None,
                               analysis_stable=result['stable'] is True,worker_node=result['worker_node'],support_label=support,
                               displacements={n['node_id']:n['values'] for n in result['displacements']},
-                              show_deformed=show_deformed and bool(result['stable']),deformation_scale=deformation_scale)
+                              show_deformed=show_deformed and bool(result['stable']),deformation_scale=deformation_scale,utilizations=utilizations)
     st.plotly_chart(fig,use_container_width=True)
 if result['stable']:
     with tempfile.TemporaryDirectory() as directory:
