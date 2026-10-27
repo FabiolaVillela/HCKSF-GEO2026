@@ -32,12 +32,42 @@ def test_dashboard_reaches_every_stage_without_crashing():
         assert app.success or app.error  # stable or unstable banner shown
 
 
-def test_bars_per_stage_changes_stage_count():
+def run_analysis(app):
+    app.button(key='dash_run').click().run()
+
+
+def test_inputs_apply_only_when_run_analysis_is_pressed():
     app = dashboard()
     one = int(app.slider(key='dash_step').max)
     app.number_input(key='dash_batch').set_value(3).run()
     assert not app.exception
+    assert int(app.slider(key='dash_step').max) == one  # editing an input alone does not re-run
+    assert any('Results for:' in c.value and '1 per stage' in c.value for c in app.caption)
+    app.number_input(key='dash_batch').set_value(3)  # set and submit in one step, as a user does
+    run_analysis(app)
+    assert not app.exception
     assert int(app.slider(key='dash_step').max) < one
+    assert any('3 per stage' in c.value for c in app.caption)
+
+
+def test_run_analysis_restarts_from_the_first_stage_and_stops_playback():
+    app = dashboard()
+    app.slider(key='dash_step').set_value(5).run()
+    press_play(app)
+    assert app.session_state['dash_playing']
+    run_analysis(app)
+    assert not app.exception
+    assert app.session_state['dash_step'] == 0 and not app.session_state['dash_playing']
+
+
+def test_failed_run_shows_no_stale_results():
+    app = dashboard()
+    assert app.success  # results are on screen
+    app.selectbox(key='dash_source').select('Excel template').run()
+    run_analysis(app)  # no file uploaded
+    assert not app.exception
+    assert not app.success and not app.error and app.info
+    assert not [c for c in app.caption if 'Results for:' in c.value]
 
 
 def press_play(app):

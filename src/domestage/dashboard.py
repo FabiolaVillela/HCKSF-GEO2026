@@ -229,53 +229,69 @@ def render() -> None:
     params: dict = {}
     with st.sidebar:
         st.subheader("1. Model")
+        # Outside the form so the fields below follow the chosen source immediately.
         source = st.selectbox("Model source", ["Synthetic dome", "Excel template", "DXF wireframe"],
                               key="dash_source")
-        uploaded = None
-        if source != "Synthetic dome":
-            uploaded = st.file_uploader("Upload model", type=["xlsx"] if source == "Excel template" else ["dxf"],
-                                        key="dash_upload")
-        if source == "Synthetic dome":
-            params["rings"] = int(st.number_input("Dome rings", 1, 5, 3, key="dash_rings"))
-            params["sides"] = int(st.number_input("Nodes per ring", 3, 16, 8, key="dash_sides"))
-            params["radius"] = st.number_input("Dome radius (m)", min_value=0.1, value=5.0, key="dash_radius")
-        elif source == "DXF wireframe":
-            params["unit_scale"] = st.number_input("Meters per DXF unit", min_value=1e-6, value=1.0,
-                                                   format="%.6f", key="dash_unit")
-            params["ring_height"] = st.number_input("Stage height interval (m)", min_value=0.001, value=1.0,
-                                                    key="dash_ring")
-            params["layers"] = st.text_input("Layers (comma separated; blank = all)", key="dash_layers")
-
-        st.subheader("2. Section and loads")
         from_catalog = source != "Excel template"
-        if from_catalog:
-            material = st.selectbox("Material", list(MATERIALS), key="dash_material")
-            hss = st.selectbox("Circular HSS profile", list(HSS), index=2, key="dash_hss")
-            worker_kg = st.number_input("Installer + tools (kg)", min_value=0.0, value=100.0, step=10.0,
-                                        key="dash_worker")
-        else:
-            st.caption("Sections and loads come from the Excel file.")
+        # Inputs are applied only when "Run analysis" is pressed, not on every change.
+        with st.form("dash_inputs", border=False):
+            uploaded = None
+            if source != "Synthetic dome":
+                uploaded = st.file_uploader("Upload model", type=["xlsx"] if source == "Excel template" else ["dxf"],
+                                            key="dash_upload")
+            if source == "Synthetic dome":
+                params["rings"] = int(st.number_input("Dome rings", 1, 5, 3, key="dash_rings"))
+                params["sides"] = int(st.number_input("Nodes per ring", 3, 16, 8, key="dash_sides"))
+                params["radius"] = st.number_input("Dome radius (m)", min_value=0.1, value=5.0, key="dash_radius")
+            elif source == "DXF wireframe":
+                params["unit_scale"] = st.number_input("Meters per DXF unit", min_value=1e-6, value=1.0,
+                                                       format="%.6f", key="dash_unit")
+                params["ring_height"] = st.number_input("Stage height interval (m)", min_value=0.001, value=1.0,
+                                                        key="dash_ring")
+                params["layers"] = st.text_input("Layers (comma separated; blank = all)", key="dash_layers")
 
-        st.subheader("3. Stages")
-        batch = int(st.number_input("Bars installed per stage", 1, 500, 1, key="dash_batch"))
+            st.subheader("2. Section and loads")
+            if from_catalog:
+                material = st.selectbox("Material", list(MATERIALS), key="dash_material")
+                hss = st.selectbox("Circular HSS profile", list(HSS), index=2, key="dash_hss")
+                worker_kg = st.number_input("Installer + tools (kg)", min_value=0.0, value=100.0, step=10.0,
+                                            key="dash_worker")
+            else:
+                st.caption("Sections and loads come from the Excel file.")
 
-    try:
-        model = _load_model(source, uploaded, params)
-        if model is None:
-            st.info("Upload a model, or choose Synthetic dome to run the example.")
+            st.subheader("3. Stages")
+            batch = int(st.number_input("Bars installed per stage", 1, 500, 1, key="dash_batch"))
+            run = st.form_submit_button("▶ Run analysis", type="primary", width="stretch", key="dash_run")
+
+    if run or "dash_applied" not in st.session_state:
+        st.session_state.pop("dash_applied", None)  # a failed run must not leave old results on screen
+        try:
+            model = _load_model(source, uploaded, params)
+            if model is None:
+                st.info("Upload a model and press Run analysis, or choose Synthetic dome to run the example.")
+                return
+            if from_catalog:
+                model = _apply_profile(model, material, hss, worker_kg)
+            problems = validate_model(model)
+            if problems:
+                raise ValueError("; ".join(problems))
+            if len(model.nodes) > 250 or len(model.bars) > 500:
+                raise ValueError("Interactive prototype limit: 250 nodes and 500 bars")
+            with st.spinner("Analyzing construction stages…"):
+                results = _analyze(model, batch)
+        except Exception as error:  # parsers raise several exception types
+            st.error(f"Cannot analyze this model: {error}")
             return
+        label = f"{source} · {len(model.bars)} bars · {batch} per stage"
         if from_catalog:
-            model = _apply_profile(model, material, hss, worker_kg)
-        problems = validate_model(model)
-        if problems:
-            raise ValueError("; ".join(problems))
-        if len(model.nodes) > 250 or len(model.bars) > 500:
-            raise ValueError("Interactive prototype limit: 250 nodes and 500 bars")
-        with st.spinner("Analyzing construction stages…"):
-            results = _analyze(model, batch)
-    except Exception as error:  # parsers raise several exception types
-        st.error(f"Cannot analyze this model: {error}")
-        return
+            label += f" · {hss}, {material}, installer {worker_kg:g} kg"
+        st.session_state.dash_applied = dict(model=model, results=results, label=label)
+        st.session_state.dash_step = 0  # a new analysis starts again from the first stage
+        st.session_state.dash_playing = False
+
+    applied = st.session_state.dash_applied
+    model, results = applied["model"], applied["results"]
+    st.caption(f"Results for: {applied['label']}. Change the inputs, then press Run analysis to apply them.")
 
     last = len(results) - 1
     if st.session_state.get("dash_step", 0) > last:
