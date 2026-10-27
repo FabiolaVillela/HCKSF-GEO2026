@@ -158,8 +158,8 @@ def _solve(geometry, config, stage):
     profile_name = config.get('profile', list(HSS)[2])
     if material_name not in MATERIALS or profile_name not in HSS:
         raise ValueError('Material o perfil no disponible en el catálogo.')
-    connection = config.get('connection', 'articulada')
-    support = config.get('support', 'articulado')
+    connection = config.get('connection', 'empotrada')
+    support = config.get('support', 'empotrado')
     if connection not in ('articulada', 'empotrada') or support not in ('articulado', 'empotrado'):
         raise ValueError('Tipo de conexión o apoyo inválido.')
 
