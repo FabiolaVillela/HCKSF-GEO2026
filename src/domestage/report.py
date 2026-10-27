@@ -145,6 +145,7 @@ TEXT = {
                     'es': 'Solo revisiones preliminares de elementos (axial, flexión e interacción H1). No se revisan cortante, '
                           'torsión, conexiones ni la estabilidad del capítulo C. No es una aprobación de diseño. Ver docs/AISC.md.'},
     'none': {'en': 'none', 'es': 'ninguna'},
+    'node_dead_load': {'en': ' + {kg:g} kg dead load per installed node (including supports)', 'es': ' + {kg:g} kg de carga muerta por nodo instalado (incluidos apoyos)'},
     'self_weight': {'en': 'Self-weight of installed bars', 'es': 'Peso propio de las barras instaladas'},
     'installer': {'en': ' + installer {kg} kg', 'es': ' + instalador {kg} kg'},
     'note': {'en': 'Envelope over all solved stages (independent linear-elastic equilibrium per stage). '
@@ -244,6 +245,7 @@ def build_report(geometry, config=None, design=None):
     summary = dict(
         material=material, profile=profile, connections=config.get('connection', 'empotrada'),
         default_support=config.get('support', 'empotrado'), bars_per_stage=config.get('bars_per_step', 2),
+        node_dead_load_kg=config.get('node_dead_load_kg', 25),
         installer_load_kg=config.get('worker_kg', 0), total_stages=len(stages),
         solved_stages=sum(s['status'] == 'stable' for s in stages), stages_without_solution=unsolved,
         total_bars=len(bars), total_nodes=len(nodes), checks_mode=mode, grade=grade,
@@ -259,7 +261,7 @@ def _t(group, code, language):
 
 def _localized_tables(report, language):
     s = report['summary']
-    load = TEXT['self_weight'][language] + (TEXT['installer'][language].format(kg=s['installer_load_kg']) if s['installer_load_kg'] else '')
+    load = TEXT['self_weight'][language] + TEXT['node_dead_load'][language].format(kg=s['node_dead_load_kg']) + (TEXT['installer'][language].format(kg=s['installer_load_kg']) if s['installer_load_kg'] else '')
     rows = dict(
         material=_t('material', s['material'], language), profile=s['profile'],
         connections=_t('connection', s['connections'], language),

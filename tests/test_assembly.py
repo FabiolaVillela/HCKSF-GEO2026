@@ -16,7 +16,7 @@ def tetrahedron():
 
 
 def config(**kwargs):
-    return dict(material='Acero',profile=catalog()['profiles'][2],connection='articulada',support='articulado',bars_per_step=1,worker_kg=0,**kwargs)
+    return dict(material='Acero',profile=catalog()['profiles'][2],connection='articulada',support='articulado',bars_per_step=1,worker_kg=0,**({'node_dead_load_kg': 0} | kwargs))
 
 
 def test_stage_grouping_and_mass_exclude_future_bars():
@@ -114,3 +114,23 @@ def test_dxf_diagnostics_block_bad_geometry_and_units_are_not_guessed():
     assert geom['nodes'][1]['x']==pytest.approx(.1)
     d.modelspace().add_line((100,0,0),(0,0,0))
     with pytest.raises(ValueError,match='duplicadas'):geometry_from_dxf(content(),'mm')
+
+
+def test_nodal_dead_load_tracks_installed_nodes_and_support_reactions():
+    model = tetrahedron()
+    cfg = config()
+    cfg.pop('node_dead_load_kg')  # Production default is 25 kg per node.
+    for stage, count in [(0, 3), (3, 4)]:
+        loaded = solve_stage(model, cfg, stage)
+        assert loaded['node_dead_load_total_N'] == pytest.approx(count * 25 * G)
+        assert sum(n['values'][2] for n in loaded['reactions']) == pytest.approx((loaded['mass_kg'] + count * 25) * G)
+        np.testing.assert_allclose(loaded['balance_force_N'], 0, atol=1e-7)
+    unloaded = solve_stage(model, config(), 3)
+    for bid in ('201', '202', '203'):
+        assert loaded['forces'][bid] - unloaded['forces'][bid] == pytest.approx(-25 * G * math.sqrt(2) / 3)
+    from domestage.aisc import check_result
+    GRADE = {'grade': 'a500-21-c'}
+    checked = check_result(loaded, GRADE)
+    assert checked['max_utilization'] > check_result(unloaded, GRADE)['max_utilization']
+    member = next(m for m in checked['members'] if str(m['id']) == '201')
+    assert abs(member['factored_actions'][0]) == pytest.approx(1.4 * abs(loaded['forces']['201']))
