@@ -143,6 +143,27 @@ def solve_stage(geometry, config=None, stage=0):
     return json.loads(_cached_stage(payload))
 
 
+def progress_series(geometry, config=None):
+    """Máximos por etapa frente al % de avance, para las gráficas de resultados.
+
+    Las etapas sin solución (mecanismo o error) se devuelven con valores None:
+    no se inventan fuerzas ni desplazamientos.
+    """
+    config=dict(config or {})
+    plan=stage_plan(geometry,config.get('bars_per_step',2))
+    series=[]
+    for info in plan:
+        r=solve_stage(geometry,config,info['stage'])
+        stable=r['status']=='stable'
+        tension=r['max_tension_kn'] if stable else None
+        compression=r['max_compression_kn'] if stable else None
+        series.append(dict(stage=info['stage'],progress_pct=info['progress_pct'],active_count=info['active_count'],
+                           status=r['status'],max_tension_kn=tension,max_compression_kn=compression,
+                           max_force_kn=max(tension,compression) if stable else None,
+                           max_displacement_mm=r['max_displacement_mm'] if stable else None))
+    return series
+
+
 @lru_cache(maxsize=32)
 def _cached_stage(payload):
     p = json.loads(payload)

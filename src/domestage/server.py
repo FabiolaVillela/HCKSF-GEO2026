@@ -5,7 +5,7 @@ from urllib.parse import urlsplit,parse_qs
 import argparse
 import json
 
-from .assembly import catalog, geometry_from_dxf, geometry_from_structure, stage_plan, solve_stage
+from .assembly import catalog, geometry_from_dxf, geometry_from_structure, progress_series, stage_plan, solve_stage
 from .demo_model import generate_demo_dome
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -52,6 +52,8 @@ class Handler(BaseHTTPRequestHandler):
             if not isinstance(payload,dict): raise ValueError('Se requiere un objeto JSON.')
             if url.path=='/api/plan':
                 return self.send(200,stage_plan(payload['geometry'],payload.get('bars_per_step',2)))
+            if url.path=='/api/progress':
+                return self.send(200,progress_series(payload['geometry'],payload.get('config')))
             if url.path=='/api/stage':
                 return self.send(200,solve_stage(payload['geometry'],payload.get('config'),payload.get('stage',0)))
             self.send(404,{'message':'Ruta no disponible.'})

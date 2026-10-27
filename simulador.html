@@ -20,7 +20,7 @@
 
       --tension: #001B96;
       --compression: #EF4444;
-      --highlight: #00C853;
+      --highlight: #FF00FF;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background-color: var(--bg-page); color: var(--black); padding: 20px 28px; min-height: 100vh; }
@@ -216,88 +216,90 @@
     th { font-weight: 700; color: var(--gb-darker); background: #F8FAFC; }
     
     #message { margin: 10px 0; font-size: 0.85rem; color: var(--gray-71); }
+  .language-control{color:white;display:flex;align-items:center;gap:8px;margin-left:auto}.language-control select{width:auto}.force-legend{flex-basis:100%;max-width:480px}.force-gradient{height:12px;border:1px solid #94a3b8;border-radius:4px;margin-top:6px;background:linear-gradient(90deg,#ef4444,#facc15 50%,#22c55e 75%,#001b96)}.force-ticks{display:flex;justify-content:space-between;gap:8px;font-variant-numeric:tabular-nums}.force-ticks>span{flex:1;text-align:center}.force-ticks>span:first-child{text-align:left}.force-ticks>span:last-child{text-align:right}[hidden]{display:none!important}header{gap:12px;flex-wrap:wrap}
   </style>
 </head>
 <body>
 
   <header>
     <div>
-      <h1>🏗️ GEOMETRICA · Steel Dome Construction Analysis</h1>
-      <div class="header-sub">Stage-by-stage structural simulation · Self-weight linear elastic equilibrium</div>
+      <h1><span data-i18n="🏗️ GEOMETRICA · Steel Dome Construction Analysis">🏗️ GEOMETRICA · Steel Dome Construction Analysis</span></h1>
+      <div class="header-sub"><span data-i18n="Stage-by-stage structural simulation · Self-weight linear elastic equilibrium">Stage-by-stage structural simulation · Self-weight linear elastic equilibrium</span></div>
     </div>
-    <div id="status-badge" class="badge badge-pending">INITIALIZING</div>
+    <label class="language-control"><span data-i18n="Language">Language</span> <select id="language-select" aria-label="Language / Idioma"><option value="en">English</option><option value="es">Español</option></select></label>
+    <div id="status-badge" class="badge badge-pending"><span data-i18n="INITIALIZING">INITIALIZING</span></div>
   </header>
 
   <!-- Sectioned Control Cards Grid -->
   <div class="controls-grid">
     <!-- Card 1: CAD & Geometry -->
     <div class="panel-card">
-      <div class="panel-title">📁 1. CAD Geometry & DXF</div>
+      <div class="panel-title"><span data-i18n="📁 1. CAD Geometry &amp; DXF">📁 1. CAD Geometry & DXF</span></div>
       <div class="control-row">
-        <span class="control-label">Upload DXF Wireframe:</span>
+        <span class="control-label"><span data-i18n="Upload DXF Wireframe:">Upload DXF Wireframe:</span></span>
         <input type="file" id="dxf-file-input" accept=".dxf">
       </div>
       <div class="control-row">
-        <span class="control-label">Drawing Units:</span>
+        <span class="control-label"><span data-i18n="Drawing Units:">Drawing Units:</span></span>
         <select id="dxf-units">
-          <option value="auto">Auto-detect</option>
-          <option value="mm">Millimeters (mm)</option>
-          <option value="m">Meters (m)</option>
-          <option value="in">Inches (in)</option>
-          <option value="ft">Feet (ft)</option>
+          <option value="auto" data-i18n="Auto-detect">Auto-detect</option>
+          <option value="mm" data-i18n="Millimeters (mm)">Millimeters (mm)</option>
+          <option value="m" data-i18n="Meters (m)">Meters (m)</option>
+          <option value="in" data-i18n="Inches (in)">Inches (in)</option>
+          <option value="ft" data-i18n="Feet (ft)">Feet (ft)</option>
         </select>
       </div>
       <div class="control-row">
-        <span class="control-label">Merge Tolerance (mm):</span>
+        <span class="control-label"><span data-i18n="Merge Tolerance (mm):">Merge Tolerance (mm):</span></span>
         <input id="dxf-tolerance" type="number" min="0.0001" max="50" value="1.0" step="0.1">
       </div>
     </div>
 
     <!-- Card 2: Materials & Profiles -->
     <div class="panel-card">
-      <div class="panel-title">⚙️ 2. Structural Properties</div>
+      <div class="panel-title"><span data-i18n="⚙️ 2. Structural Properties">⚙️ 2. Structural Properties</span></div>
       <div class="control-row">
-        <span class="control-label">Steel Material:</span>
+        <span class="control-label"><span data-i18n="Steel Material:">Steel Material:</span></span>
         <select id="sel-material"></select>
       </div>
       <div class="control-row">
-        <span class="control-label">HSS Pipe Section:</span>
+        <span class="control-label"><span data-i18n="HSS Pipe Section:">HSS Pipe Section:</span></span>
         <select id="sel-profile"></select>
       </div>
       <div class="control-row">
-        <span class="control-label">Bars Per Stage Step:</span>
+        <span class="control-label"><span data-i18n="Bars Per Stage Step:">Bars Per Stage Step:</span></span>
         <select id="sel-step">
-          <option value="1">1 bar per stage</option>
-          <option value="2" selected>2 bars per stage</option>
-          <option value="3">3 bars per stage</option>
-          <option value="4">4 bars per stage</option>
+          <option value="1" data-i18n="1 bar per stage">1 bar per stage</option>
+          <option value="2" selected data-i18n="2 bars per stage">2 bars per stage</option>
+          <option value="3" data-i18n="3 bars per stage">3 bars per stage</option>
+          <option value="4" data-i18n="4 bars per stage">4 bars per stage</option>
         </select>
       </div>
     </div>
 
     <!-- Card 3: Boundary & Connections -->
     <div class="panel-card">
-      <div class="panel-title">🔗 3. Connections & Supports</div>
+      <div class="panel-title"><span data-i18n="🔗 3. Connections &amp; Supports">🔗 3. Connections & Supports</span></div>
       <div class="control-row">
-        <span class="control-label">Bar Connections:</span>
+        <span class="control-label"><span data-i18n="Bar Connections:">Bar Connections:</span></span>
         <select id="sel-connection">
-          <option value="articulada">Pinned · Axial Truss (3 DOF)</option>
-          <option value="empotrada" selected>Rigid · Frame with Moments (6 DOF)</option>
+          <option value="articulada" data-i18n="Pinned · Axial Truss (3 DOF)">Pinned · Axial Truss (3 DOF)</option>
+          <option value="empotrada" selected data-i18n="Rigid · Frame with Moments (6 DOF)">Rigid · Frame with Moments (6 DOF)</option>
         </select>
       </div>
       <div class="control-row">
-        <span class="control-label">Base Supports Default:</span>
+        <span class="control-label"><span data-i18n="Base Supports Default:">Base Supports Default:</span></span>
         <select id="sel-support">
-          <option value="articulado">Pinned (Restrain Ux, Uy, Uz)</option>
-          <option value="empotrado" selected>Fixed (Restrain All 6 DOFs)</option>
+          <option value="articulado" data-i18n="Pinned (Restrain Ux, Uy, Uz)">Pinned (Restrain Ux, Uy, Uz)</option>
+          <option value="empotrado" selected data-i18n="Fixed (Restrain All 6 DOFs)">Fixed (Restrain All 6 DOFs)</option>
         </select>
       </div>
       <div class="control-row" style="margin-top: 4px;">
-        <span class="control-label">Node Connection Schedule:</span>
+        <span class="control-label"><span data-i18n="Node Connection Schedule:">Node Connection Schedule:</span></span>
         <div style="display: flex; gap: 8px;">
-          <button id="btn-export-csv" class="btn-csv" title="Export CSV table with support types per node">⬇ Export CSV</button>
-          <label class="btn-csv" style="display: inline-block; cursor: pointer;" title="Import edited CSV">
-            ⬆ Import CSV
+          <button id="btn-export-csv" class="btn-csv" title="Export CSV table with support types per node" data-i18n-title="Export CSV table with support types per node"><span data-i18n="⬇ Export CSV">⬇ Export CSV</span></button>
+          <label class="btn-csv" style="display: inline-block; cursor: pointer;" title="Import edited CSV" data-i18n-title="Import edited CSV">
+            <span data-i18n="⬆ Import CSV">⬆ Import CSV</span>
             <input type="file" id="csv-import-input" accept=".csv" style="display: none;">
           </label>
         </div>
@@ -308,46 +310,46 @@
   <!-- Re-located New Bars Banner -->
   <div class="new-bars-card">
     <div>
-      <div class="new-bars-title">Current Installation Step · Elements Added</div>
-      <div style="font-size: 0.8rem; color: var(--gray-71); margin-top: 2px;">Active members contributing new stiffness and weight in this stage</div>
+      <div class="new-bars-title"><span data-i18n="Current Installation Step · Elements Added">Current Installation Step · Elements Added</span></div>
+      <div style="font-size: 0.8rem; color: var(--gray-71); margin-top: 2px;"><span data-i18n="Active members contributing new stiffness and weight in this stage">Active members contributing new stiffness and weight in this stage</span></div>
     </div>
-    <div id="newest-bar-text" class="new-bars-badge">Stage 0 · Base Installed</div>
+    <div id="newest-bar-text" class="new-bars-badge"><span data-i18n="Stage 0 · Base Installed">Stage 0 · Base Installed</span></div>
   </div>
 
   <!-- Timeline & Progress Bar -->
   <div class="timeline-card">
     <div class="progress-header">
-      <span><strong>Dome Assembly Progress:</strong> <strong id="progress-text" style="color:var(--gb-approximate);">0%</strong></span>
-      <span>Active Bars: <strong id="active-bars-count">0</strong> / <span id="total-bars-count">0</span></span>
+      <span><strong><span data-i18n="Dome Assembly Progress:">Dome Assembly Progress:</span></strong> <strong id="progress-text" style="color:var(--gb-approximate);">0%</strong></span>
+      <span><span data-i18n="Active Bars:">Active Bars:</span> <strong id="active-bars-count">0</strong> / <span id="total-bars-count">0</span></span>
     </div>
     <div class="progress-bar-bg"><div id="progress-fill" class="progress-bar-fill"></div></div>
     <div class="slider-row">
-      <button id="btn-play" class="btn btn-play">▶ Play Assembly</button>
-      <button id="btn-prev" class="btn" aria-label="Previous stage">◀</button>
-      <input type="range" id="stage-slider" min="0" max="1" value="0">
-      <button id="btn-next" class="btn" aria-label="Next stage">▶</button>
-      <span style="font-size: 0.9rem; min-width: 100px; font-weight: 700;">Stage <strong id="stage-num" style="color:var(--gb-approximate);">0</strong> / <span id="last-stage">0</span></span>
+      <button id="btn-play" class="btn btn-play"><span data-i18n="▶ Play Assembly">▶ Play Assembly</span></button>
+      <button id="btn-prev" class="btn" aria-label="Previous stage" data-i18n-aria-label="Previous stage">◀</button>
+      <input type="range" aria-label="Assembly stage" data-i18n-aria-label="Assembly stage" id="stage-slider" min="0" max="1" value="0">
+      <button id="btn-next" class="btn" aria-label="Next stage" data-i18n-aria-label="Next stage">▶</button>
+      <span style="font-size: 0.9rem; min-width: 100px; font-weight: 700;"><span data-i18n="Stage">Stage</span> <strong id="stage-num" style="color:var(--gb-approximate);">0</strong> / <span id="last-stage">0</span></span>
     </div>
   </div>
 
-  <div id="message" role="status" aria-live="polite">Connecting to calculation engine…</div>
+  <div id="message" role="status" aria-live="polite"><span data-i18n="Connecting to calculation engine…">Connecting to calculation engine…</span></div>
 
   <!-- Real-Time Metrics (Pure self-weight) -->
   <div class="metrics-grid">
     <div class="metric">
-      <div class="metric-label">Max Tension (+T)</div>
+      <div class="metric-label"><span data-i18n="Max Tension (+T)">Max Tension (+T)</span></div>
       <div class="metric-value val-tension" id="max-tension">—</div>
     </div>
     <div class="metric">
-      <div class="metric-label">Max Compression (−C)</div>
+      <div class="metric-label"><span data-i18n="Max Compression (−C)">Max Compression (−C)</span></div>
       <div class="metric-value val-compression" id="max-compression">—</div>
     </div>
     <div class="metric">
-      <div class="metric-label">Installed Structure Weight</div>
+      <div class="metric-label"><span data-i18n="Installed Structure Weight">Installed Structure Weight</span></div>
       <div class="metric-value" id="installed-weight" style="font-size: 1.25rem;">—</div>
     </div>
     <div class="metric">
-      <div class="metric-label">Max Deflection</div>
+      <div class="metric-label"><span data-i18n="Max Deflection">Max Deflection</span></div>
       <div class="metric-value" id="max-displacement" style="font-size: 1.25rem; color: var(--gb-darker);">—</div>
     </div>
   </div>
@@ -355,43 +357,50 @@
   <!-- PR 11 Feature: Amplified Deformation & Support Reactions Toggles -->
   <div class="viz-options-strip" id="deformation-controls">
     <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
-      <input id="show-deformation" type="checkbox" disabled> <strong>Show Amplified Nodal Deflection</strong>
+      <input id="show-deformation" type="checkbox" disabled> <strong><span data-i18n="Show Amplified Nodal Deflection">Show Amplified Nodal Deflection</span></strong>
     </label>
     <label style="display:flex; align-items:center; gap:6px;">
-      Scale factor × <input id="deformation-factor" type="number" min="0" max="100000" step="1" value="10" style="width:75px;" disabled>
+      <span data-i18n="Scale factor ×">Scale factor ×</span> <input id="deformation-factor" type="number" min="0" max="100000" step="1" value="10" style="width:75px;" disabled>
     </label>
     <label style="display:flex; align-items:center; gap:6px; margin-left:14px; cursor:pointer;">
-      <input id="show-reactions" type="checkbox" disabled> <strong>Show Support Reaction Vectors</strong>
+      <input id="show-reactions" type="checkbox" disabled> <strong><span data-i18n="Show Support Reaction Vectors">Show Support Reaction Vectors</span></strong>
     </label>
     <label style="display:flex; align-items:center; gap:6px;">
-      Reactions:
+      <span data-i18n="Reactions:">Reactions:</span>
       <select id="reaction-mode" disabled style="max-width:160px;">
-        <option value="total">Resultant Total</option>
-        <option value="components">XYZ Components</option>
-        <option value="cylindrical">Radial / Tangential / Vertical</option>
+        <option value="total" data-i18n="Resultant Total">Resultant Total</option>
+        <option value="components" data-i18n="XYZ Components">XYZ Components</option>
+        <option value="cylindrical" data-i18n="Radial / Tangential / Vertical">Radial / Tangential / Vertical</option>
       </select>
     </label>
     <span id="reaction-legend" hidden><span style="color:#15803D">X · Green</span> / <span style="color:#DC2626">Y · Red</span> / <span style="color:#2563EB">Z · Blue</span></span>
     <span id="reaction-note" role="status" aria-live="polite" style="color:var(--gray-71);"></span>
-    <span id="deformation-note" role="status" aria-live="polite" style="color:var(--gray-71); margin-left:auto;">Deflection view off (values are true scale).</span>
+    <span id="deformation-note" role="status" aria-live="polite" style="color:var(--gray-71); margin-left:auto;"><span data-i18n="Deflection view off (values are true scale).">Deflection view off (values are true scale).</span></span>
   </div>
 
   <!-- 3D Interactive Viewport -->
   <div class="viewport-card">
-    <canvas id="viewport" role="img" aria-label="3D structure viewport. Drag to orbit, wheel to zoom, click to inspect."></canvas>
+    <canvas id="viewport" role="img" aria-label="3D structure viewport. Drag to orbit, wheel to zoom, click to inspect." data-i18n-aria-label="3D structure viewport. Drag to orbit, wheel to zoom, click to inspect."></canvas>
     <div class="canvas-overlay">
-      <div class="legend-item"><span class="legend-dot" style="background:#00C853;"></span> Newly installed</div>
-      <div class="legend-item"><span class="legend-dot" style="background:#EF4444;"></span> Compression (−)</div>
-      <div class="legend-item"><span class="legend-dot" style="background:#001B96;"></span> Tension (+)</div>
-      <div class="legend-item"><span class="legend-dot" style="background:#F59E0B;"></span> Base supports</div>
-      <div class="legend-item"><span class="legend-dot" style="background:#CACACA;"></span> Pending (#CACACA)</div>
-      <div class="legend-item"><span class="legend-dot" style="background:#7C3AED;"></span> Deflection view</div>
+      <div class="force-legend">
+        <div><span data-i18n="Midpoint axial force · kN · 80% saturation per stage">Midpoint axial force · kN · 80% saturation per stage</span></div>
+        <div id="force-scale"><div class="force-gradient"></div>
+          <div class="force-ticks"><span id="force-min">—</span><span>0</span><span id="force-max">—</span></div>
+          <div class="force-ticks"><span><span data-i18n="Compression">Compression</span></span><span><span data-i18n="Zero">Zero</span></span><span><span data-i18n="Tension">Tension</span></span></div>
+        </div><div id="force-unavailable"><span data-i18n="No calculated forces">No calculated forces</span></div>
+      </div>
+      <div class="legend-item"><span class="legend-dot" style="background:#FF00FF;"></span> <span data-i18n="Magenta outline: new">Magenta outline: new</span></div>
+      <div class="legend-item"><span class="legend-dot" style="background:#737373;"></span> <span data-i18n="Gray: unsolved">Gray: unsolved</span></div>
+
+      <div class="legend-item"><span class="legend-dot" style="background:#F59E0B;"></span> <span data-i18n="Base supports">Base supports</span></div>
+      <div class="legend-item"><span class="legend-dot" style="background:#CACACA;"></span> <span data-i18n="Pending">Pending</span></div>
+      <div class="legend-item"><span class="legend-dot" style="background:#7C3AED;"></span> <span data-i18n="Deflection view">Deflection view</span></div>
     </div>
-    <div class="instructions">🖱️ Drag to rotate · Wheel to zoom · Click member or support to inspect</div>
+    <div class="instructions"><span data-i18n="🖱️ Drag to rotate · Wheel to zoom · Click member or support to inspect">🖱️ Drag to rotate · Wheel to zoom · Click member or support to inspect</span></div>
   </div>
 
   <details id="reaction-panel" hidden style="margin-bottom:20px; font-size:0.85rem;">
-    <summary style="font-weight:700; color:var(--gb-darker); cursor:pointer;">Support Reactions Table · Forces (kN) & Moments (kN·m)</summary>
+    <summary style="font-weight:700; color:var(--gb-darker); cursor:pointer;"><span data-i18n="Support Reactions Table · Forces (kN) &amp; Moments (kN·m)">Support Reactions Table · Forces (kN) & Moments (kN·m)</span></summary>
     <div id="reaction-table" style="overflow:auto; margin-top:8px;"></div>
   </details>
 
@@ -399,25 +408,47 @@
   <div class="inspector-card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
       <div style="font-size: 0.9rem; font-weight: 700; color: var(--gb-darker); text-transform: uppercase;">
-        Member & Node Detail Inspector
+        <span data-i18n="Member &amp; Node Detail Inspector">Member & Node Detail Inspector</span>
       </div>
       <div style="display: flex; gap: 10px; align-items: center;">
         <select id="element-select" style="max-width: 200px;">
-          <option value="">Click member or select here…</option>
+          <option value="" data-i18n="Click member or select here…">Click member or select here…</option>
         </select>
-        <button class="btn" id="download-stage" style="padding: 5px 12px; font-size: 0.8rem;" disabled>Export Stage JSON</button>
+        <button class="btn" id="download-stage" style="padding: 5px 12px; font-size: 0.8rem;" disabled><span data-i18n="Export Stage JSON">Export Stage JSON</span></button>
       </div>
     </div>
     <div id="selection-detail" style="font-size: 0.85rem; color: var(--gray-71);">
-      Click any installed bar in the 3D model to inspect its Axial forces and My/Mz Bending Moments.
+      <span data-i18n="Click any installed bar in the 3D model to inspect its Axial forces and My/Mz Bending Moments.">Click any installed bar in the 3D model to inspect its Axial forces and My/Mz Bending Moments.</span>
     </div>
   </div>
 
+  <!-- Progress charts: max axial force and max deflection vs % assembly progress -->
+  <div class="charts-card" id="charts-card">
+<div class="progress-header" style="align-items:center;flex-wrap:wrap;gap:10px"><strong style="color:var(--gb-darker);font-size:1rem" data-i18n="Progress charts">Progress charts</strong><span style="display:flex;gap:8px;flex-wrap:wrap"><button id="btn-charts" class="btn btn-play" data-i18n="📈 Compute all stages">📈 Compute all stages</button><button id="btn-charts-csv" class="btn" disabled data-i18n="Download data (CSV)">Download data (CSV)</button></span></div>
+<div class="charts-options"><label><input type="checkbox" id="chart-log"> <span data-i18n="Log scale">Log scale</span></label><label><input type="checkbox" id="chart-clip" checked> <span data-i18n="Clip outliers">Clip outliers</span> <span style="color:var(--gray-71)">(&gt; 20 × median)</span></label></div>
+<div id="charts-message" role="status" aria-live="polite" style="font-size:.85rem;color:var(--gray-71);margin-bottom:10px" data-i18n="Compute all stages to see how the maximum axial force and maximum deflection change as assembly progresses.">Compute all stages to see how the maximum axial force and maximum deflection change as assembly progresses.</div>
+<div id="charts-clip-note" style="font-size:.8rem;color:#B45309;margin-bottom:8px"></div>
+<div class="charts-grid">
+<figure><figcaption data-i18n="Maximum axial force vs % progress">Maximum axial force vs % progress</figcaption><svg id="chart-force" viewBox="0 0 600 340" role="img" aria-label="Maximum axial force versus assembly progress"></svg></figure>
+<figure><figcaption data-i18n="Maximum deflection vs % progress">Maximum deflection vs % progress</figcaption><svg id="chart-displacement" viewBox="0 0 600 340" role="img" aria-label="Maximum deflection versus assembly progress"></svg></figure>
+</div>
+</div>
+
   <details style="margin-bottom: 24px; font-size: 0.85rem;">
-    <summary style="font-weight: 700; color: var(--gb-darker); cursor: pointer;">Detailed Stage Calculation History Table</summary>
+    <summary style="font-weight: 700; color: var(--gb-darker); cursor: pointer;"><span data-i18n="Detailed Stage Calculation History Table">Detailed Stage Calculation History Table</span></summary>
     <div id="stage-history" style="margin-top: 10px; overflow-x: auto;"></div>
   </details>
 
+<style>
+.charts-card{background:#FFFFFF;border:1px solid var(--border-light);border-radius:12px;padding:16px 20px;margin-bottom:20px;box-shadow:0 2px 10px rgba(0,0,0,0.05)}
+.charts-card .progress-header{display:flex;justify-content:space-between;margin-bottom:8px}
+.charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.charts-grid figure{border:1px solid var(--border-light);border-radius:10px;padding:10px;background:#FFFFFF}
+.charts-grid figcaption{font-size:.8rem;font-weight:700;text-transform:uppercase;color:var(--gb-darker);margin-bottom:6px}
+.charts-grid svg{width:100%;height:auto;display:block}
+.chart-axis{stroke:var(--gray-71);stroke-width:1}.chart-grid{stroke:#E2E8F0;stroke-width:1}
+.chart-label{font-size:11px;fill:var(--gray-71)}.charts-options{display:flex;gap:18px;flex-wrap:wrap;font-size:.85rem;margin-bottom:8px}.charts-options label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}.chart-title{font-size:12px;fill:var(--gb-darker);font-weight:700}
+</style>
   <script src="/deformation.js"></script>
   <script src="/reactions.js"></script>
   <script src="/simulator.js"></script>
