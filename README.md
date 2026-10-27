@@ -62,3 +62,5 @@ La casilla **Mostrar deformada nodal** comienza apagada. Al activarla, la geomet
 El factor admite valores de 0 a 100000. La cámara de referencia se conserva para que la amplificación sea visible. En etapas pendientes o sin equilibrio no se dibuja una deformada. Las barras unen con líneas rectas los nodos desplazados: esta vista no interpola la curvatura por flexión dentro de cada barra. Los controles están disponibles en el simulador HTML, el dashboard y el visor HTML exportable. La exportación abre la vista apagada por defecto, o conserva la elección explícita del dashboard.
 
 Verificación adicional del dibujo: `node --test tests/test_deformation.cjs`.
+
+La casilla **Mostrar reacciones en apoyos** permite activar flechas de la fuerza resultante global sobre los apoyos y consultar una tabla con Rx, Ry, Rz (kN) y Mx, My, Mz (kN·m). Inicia apagada y se actualiza con la etapa; se deshabilita mientras no hay equilibrio. Las flechas comparten una escala visual por etapa independiente del factor de deformada; los valores son reales. Los momentos se muestran en la tabla, no como flechas.

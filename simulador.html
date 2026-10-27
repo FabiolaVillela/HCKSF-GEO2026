@@ -162,9 +162,12 @@
 <div class="config-strip" id="deformation-controls">
 <label class="config-group"><input id="show-deformation" type="checkbox" disabled> Mostrar deformada nodal</label>
 <label class="config-group">Factor visual × <input id="deformation-factor" type="number" min="0" max="100000" step="1" value="10" disabled></label>
+<label class="config-group"><input id="show-reactions" type="checkbox" disabled> Mostrar reacciones en apoyos</label>
+<span id="reaction-note" role="status" aria-live="polite"></span>
 <span id="deformation-note" role="status" aria-live="polite">Vista apagada · los valores del cálculo son reales.</span>
 </div>
 <div class="viewport-card"><canvas id="viewport" role="img" aria-label="Estructura de la etapa. Arrastrar para girar, rueda para zoom y clic para seleccionar barra o apoyo."></canvas><div class="canvas-overlay">Verde: nueva · rojo: compresión · azul: tracción · gris continuo: sin solución · gris punteado: pendiente · naranja: apoyo · morado: deformada amplificada</div><div class="instructions">Arrastra para girar · rueda para zoom · clic para consultar</div></div>
+<details id="reaction-panel" hidden><summary>Reacciones de la etapa · fuerzas en kN y momentos en kN·m</summary><div id="reaction-table" style="overflow:auto"></div></details>
 <div class="config-strip" style="margin-top:16px"><label>Seleccionar <select id="element-select" aria-label="Seleccionar barra o apoyo"><option value="">Sin selección</option></select></label><button class="btn" id="download-stage" disabled>Descargar etapa JSON</button></div>
 <div id="selection-detail" aria-live="polite">Selecciona una barra instalada o un apoyo.</div>
 <details style="margin-top:16px"><summary>Historial de etapas calculadas</summary><div id="stage-history"></div></details>

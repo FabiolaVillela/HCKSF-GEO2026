@@ -66,7 +66,33 @@ function history(){const div=$('stage-history');div.replaceChildren();const t=do
 function deformationView(){
  return DomeDeformation.view(geometry,current,$('show-deformation').checked,+$('deformation-factor').value);
 }
+function updateReactions(){
+ const available=!!current?.stable&&current.reactions.length>0,show=$('show-reactions').checked&&available;
+ $('show-reactions').disabled=!available;
+ $('reaction-panel').hidden=!show;
+ $('reaction-note').textContent=!available?'Reacciones no disponibles sin equilibrio de esta etapa.':show?'Flechas: resultante global · escala común independiente de la deformada. Valores reales en la tabla.':'Reacciones ocultas.';
+ const box=$('reaction-table');box.replaceChildren();
+ if(!show)return;
+ const t=document.createElement('table'),head=t.insertRow();
+ for(const label of ['Nodo','Rx','Ry','Rz','Mx','My','Mz']){const th=document.createElement('th');th.scope='col';th.textContent=label;head.append(th);}
+ for(const r of current.reactions){const row=t.insertRow();row.insertCell().textContent=r.node_id;for(const value of r.values)row.insertCell().textContent=fmt(value/1000);}
+ box.append(t);
+}
+$('show-reactions').addEventListener('input',()=>{updateReactions();draw();});
+function drawReactions(){
+ if(!$('show-reactions').checked||!current?.stable)return;
+ const max=Math.max(...current.reactions.map(r=>Math.hypot(...r.values.slice(0,3))),1e-12);
+ ctx.save();ctx.setLineDash([]);ctx.strokeStyle='#087F8C';ctx.fillStyle='#087F8C';ctx.lineWidth=2;ctx.font='11px sans-serif';
+ for(const r of current.reactions){
+   const p=projected.get(r.node_id);if(!p)continue;
+   const v=rotate(r.values.slice(0,3).map(x=>x/max*65)),dx=v[0],dy=-v[1],end=[p[0]+dx,p[1]+dy],length=Math.hypot(dx,dy);
+   if(length>1){const a=Math.atan2(dy,dx);ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(...end);ctx.stroke();ctx.beginPath();ctx.moveTo(...end);ctx.lineTo(end[0]-7*Math.cos(a-.45),end[1]-7*Math.sin(a-.45));ctx.lineTo(end[0]-7*Math.cos(a+.45),end[1]-7*Math.sin(a+.45));ctx.closePath();ctx.fill();}
+   ctx.fillText('R'+r.node_id+' · '+fmt(Math.hypot(...r.values.slice(0,3))/1000)+' kN',end[0]+5,end[1]-5);
+ }
+ ctx.restore();
+}
 function updateDeformation(){
+ updateReactions();
  const state=deformationView(),factor=$('deformation-factor');
  $('show-deformation').disabled=!state.available;
  factor.disabled=!state.available||!$('show-deformation').checked;
@@ -93,6 +119,7 @@ function draw(){
    for(const s of deformedSegments){ctx.lineWidth=selected==='b'+s.b.id?4:2.5;ctx.beginPath();ctx.moveTo(s.a[0],s.a[1]);ctx.lineTo(s.z[0],s.z[1]);ctx.stroke();}
  }
  ctx.setLineDash([]);for(const id of geometry.support_nodes){const p=projected.get(id);ctx.beginPath();ctx.arc(p[0],p[1],selected==='s'+id?7:4,0,2*Math.PI);ctx.fillStyle='#F59E0B';ctx.fill();}
+ drawReactions();
  if(current?.worker_node!==null&&current?.worker_node!==undefined){const p=deformedProjection.get(current.worker_node)||projected.get(current.worker_node);ctx.fillStyle='#000000';ctx.font='12px sans-serif';ctx.fillText('↓ '+fmt(current.worker_load_N/1000)+' kN',p[0]+8,p[1]-8);}
 }
 $('element-select').addEventListener('change',()=>{selected=$('element-select').value;selectionDetail();draw();});
