@@ -6,12 +6,19 @@ window.AISCView=(()=>{
  const fmt=(v,n=3)=>v===null||v===undefined?'—':host.format(v,n);
  function design(){const g=$('design-grade').value;return g==='custom'?{grade:g,Fy_MPa:$('design-fy').value,Fu_MPa:$('design-fu').value,source:$('design-source').value}:{grade:g};}
  function key(){const c=host.context();return JSON.stringify([c.geometry,c.config,design()]);}
+ const gradeLabel=g=>text(g.label,g.label.replace(' Grade ',' Grado '));
  function selectedMaterial(){const d=design();return grades.find(g=>g.id===d.grade);}
  function fillGrades(){
    const material=host.context().config.material,old=$('design-grade').value;
-   if(material===family&&$('design-grade').options.length>1)return;
+   if(material===family&&$('design-grade').options.length>1){
+     // Same material: only refresh the two translatable options when the language changes.
+     const o=$('design-grade').options;o[0].textContent=text('Select grade…','Seleccionar grado…');
+     const custom=[...o].find(x=>x.value==='custom');if(custom)custom.textContent=text('Custom (certificate)','Personalizado (certificado)');
+     for(const x of o){const g=grades.find(g=>g.id===x.value);if(g)x.textContent=gradeLabel(g);}
+     return;
+   }
    family=material;$('design-grade').replaceChildren(new Option(text('Select grade…','Seleccionar grado…'),''));
-   for(const g of grades.filter(g=>g.material===material))$('design-grade').append(new Option(g.label,g.id));
+   for(const g of grades.filter(g=>g.material===material))$('design-grade').append(new Option(gradeLabel(g),g.id));
    $('design-grade').append(new Option(text('Custom (certificate)','Personalizado (certificado)'),'custom'));
    if(grades.some(g=>g.id===old&&g.material===material))$('design-grade').value=old;
  }

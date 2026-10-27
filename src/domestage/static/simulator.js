@@ -85,6 +85,13 @@ const spanish={
   "Member & Node Detail Inspector": "Inspector de barras y nodos",
   "Click member or select here…": "Haz clic en una barra o selecciona aquí…",
   "Export Stage JSON": "Exportar etapa JSON",
+  "📄 Export results report (Excel)": "📄 Exportar reporte de resultados (Excel)",
+  "Per-bar tension, compression and AISC 360-22 utilization (needs a material grade) and per-node deflection and support type, over all stages": "Tracción, compresión y utilización AISC 360-22 por barra (requiere un grado de material) y desplazamiento y tipo de apoyo por nodo, en todas las etapas",
+  "Building report ({n} stages)…": "Generando reporte ({n} etapas)…",
+  "The engine could not build the report.": "El motor no pudo generar el reporte.",
+  "Results report exported with preliminary AISC member checks.": "Reporte de resultados exportado con revisiones AISC preliminares.",
+  "Results report exported. Member checks: not checked (select a material grade).": "Reporte de resultados exportado. Revisiones de elementos: sin revisar (selecciona un grado de material).",
+  "Results report exported. Member checks: not applicable to aluminum.": "Reporte de resultados exportado. Revisiones de elementos: no aplican al aluminio.",
   "Click any installed bar in the 3D model to inspect its Axial forces and My/Mz Bending Moments.": "Haz clic en una barra instalada para consultar sus fuerzas axiales y momentos flectores My/Mz.",
   "Detailed Stage Calculation History Table": "Historial detallado de cálculo por etapas",
   "Midpoint axial force · kN · 80% saturation per stage": "Fuerza axial al centro · kN · saturación al 80% por etapa",
@@ -168,6 +175,10 @@ const spanish={
   "Compute all stages to see how the maximum axial force and maximum deflection change as assembly progresses.": "Calcula todas las etapas para observar la evolución de la fuerza axial máxima y el desplazamiento máximo.",
   "Axial force (kN)": "Fuerza axial (kN)",
   "Max deflection (mm)": "Desplazamiento máximo (mm)",
+  "Max deflection": "Desplazamiento máx",
+  " (off scale, clipped)": " (fuera de escala, recortado)",
+  "Maximum axial force versus assembly progress": "Fuerza axial máxima frente al avance del montaje",
+  "Maximum deflection versus assembly progress": "Desplazamiento máximo frente al avance del montaje",
   "No data yet": "Aún sin datos",
   "Assembly progress (% of bars installed)": "Progreso del montaje (% de barras instaladas)",
   "Max |F| (envelope)": "|F| máx (envolvente)",
@@ -699,6 +710,25 @@ async function importDXF(){
 }
 for(const id of ['dxf-file-input','dxf-units','dxf-tolerance'])$(id).addEventListener('change',importDXF);
 
+// Results report: every stage is solved on the server and returned as an Excel workbook.
+// Member checks use the material grade selected for the AISC view (same fields it reads).
+function reportDesign(){
+  const grade=$('design-grade')?.value||'';
+  return grade==='custom'?{grade,Fy_MPa:$('design-fy').value,Fu_MPa:$('design-fu').value,source:$('design-source').value}:(grade?{grade}:{});
+}
+$('download-report').onclick=async()=>{
+  if(!geometry||!plan.length)return; const button=$('download-report'), label=button.innerHTML;
+  button.disabled=true; button.textContent=translate('Building report ({n} stages)…',{n:plan.length});
+  try{
+    const response=await fetch('/api/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({geometry,config:config(),design:reportDesign(),language})});
+    if(!response.ok){let m=translate('The engine could not build the report.');try{m=(await response.json()).message||m;}catch{} throw Error(m);}
+    const url=URL.createObjectURL(await response.blob()), a=document.createElement('a');
+    a.href=url; a.download=language==='es'?'reporte-resultados-domo.xlsx':'dome-results-report.xlsx'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);
+    const d=reportDesign();
+    $('message').textContent=translate(config().material!=='Acero'?'Results report exported. Member checks: not applicable to aluminum.':d.grade?'Results report exported with preliminary AISC member checks.':'Results report exported. Member checks: not checked (select a material grade).');
+  }catch(e){$('message').textContent=e.message;}
+  finally{button.disabled=false; button.innerHTML=label;}
+};
 $('download-stage').onclick=()=>{
   if(!current)return;
   const blob=new Blob([JSON.stringify({geometry,config:config(),result:current},null,2)],{type:'application/json'}), url=URL.createObjectURL(blob), a=document.createElement('a');
@@ -784,7 +814,7 @@ function chart(svg,lines,unit,emptyText){
   for(const s of series){const v=s[l.key];if(v===null||v===undefined){pen=false;continue;}d+=(pen?'L':'M')+x(s.progress_pct).toFixed(1)+' '+yc(v).toFixed(1)+' ';pen=true;}
   if(d)svg.append(el('path',{d,fill:'none',stroke:l.color,'stroke-width':l.width||2,'stroke-opacity':l.opacity||1,'stroke-linejoin':'round'}));
   for(const s of series){const v=s[l.key];if(v===null||v===undefined)continue;const px=x(s.progress_pct),label=`${l.label} · ${translate('Stage')} ${s.stage} · ${fmt(s.progress_pct,1)}% · ${fmt(v)} ${l.unit}`;
-   if(v>cap){if(l.width>3)continue;clipped++;const m=el('path',{d:`M${px-5} ${T+7} L${px+5} ${T+7} L${px} ${T-3} Z`,fill:'#F59E0B',stroke:'#B45309','stroke-width':1});m.append(el('title',{},label+' (off scale, clipped)'));svg.append(m);continue;}
+   if(v>cap){if(l.width>3)continue;clipped++;const m=el('path',{d:`M${px-5} ${T+7} L${px+5} ${T+7} L${px} ${T-3} Z`,fill:'#F59E0B',stroke:'#B45309','stroke-width':1});m.append(el('title',{},label+translate(' (off scale, clipped)')));svg.append(m);continue;}
    const c=el('circle',{cx:px,cy:y(v),r:l.width>3?0:2.6,fill:l.color});c.append(el('title',{},label));svg.append(c);}
  }
  for(const s of series)if(s.status!=='stable'&&s.status!=='empty'){const m=el('path',{d:`M${x(s.progress_pct)-4} ${T+ph+1} L${x(s.progress_pct)+4} ${T+ph+1} L${x(s.progress_pct)} ${T+ph-7} Z`,fill:'#EF4444'});m.append(el('title',{},`${translate('Stage')} ${s.stage} · ${fmt(s.progress_pct,1)}% · ${s.status==='unstable'?translate('mechanism: no solution'):translate('error')}`));svg.append(m);}
@@ -801,8 +831,8 @@ function chart(svg,lines,unit,emptyText){
  return clipped;
 }
 function renderCharts(){
- let clipped=chart($('chart-force'),[{key:'max_force_kn',label:translate('Max |F| (envelope)'),color:'#0B2265',width:7,opacity:.18,unit:'kN'},{key:'max_tension_kn',label:translate('Max tension'),color:'#001B96',unit:'kN'},{key:'max_compression_kn',label:translate('Max compression'),color:'#EF4444',unit:'kN'}],translate('Axial force (kN)'),'No data yet');
- clipped+=chart($('chart-displacement'),[{key:'max_displacement_mm',label:translate('Max deflection'),color:'#5A85D7',unit:'mm'}],translate('Max deflection (mm)'),'No data yet');
+ let clipped=chart($('chart-force'),[{key:'max_force_kn',label:translate('Max |F| (envelope)'),color:'#0B2265',width:7,opacity:.18,unit:'kN'},{key:'max_tension_kn',label:translate('Max tension'),color:'#001B96',unit:'kN'},{key:'max_compression_kn',label:translate('Max compression'),color:'#EF4444',unit:'kN'}],translate('Axial force (kN)'),translate('No data yet'));
+ clipped+=chart($('chart-displacement'),[{key:'max_displacement_mm',label:translate('Max deflection'),color:'#5A85D7',unit:'mm'}],translate('Max deflection (mm)'),translate('No data yet'));
  const note=$('charts-clip-note');if(note)note.textContent=series&&clipped?translate('{count} point(s) off scale, shown in orange on the top edge.',{count:clipped}):'';
 }
 for(const id of ['chart-log','chart-clip'])$(id).addEventListener('change',renderCharts);

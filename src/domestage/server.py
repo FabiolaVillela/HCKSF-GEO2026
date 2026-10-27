@@ -9,6 +9,7 @@ from .assembly import catalog, geometry_from_dxf, geometry_from_structure, progr
 from .demo_model import generate_demo_dome
 from .design_materials import material_catalog
 from .aisc import check_stage, check_all_stages
+from .report import build_report, report_xlsx
 
 ROOT=Path(__file__).resolve().parents[2]
 MAX_BODY=20*1024*1024
@@ -62,6 +63,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200,stage_plan(payload['geometry'],payload.get('bars_per_step',2)))
             if url.path=='/api/progress':
                 return self.send(200,progress_series(payload['geometry'],payload.get('config')))
+            if url.path=='/api/report':
+                report=build_report(payload['geometry'],payload.get('config'),payload.get('design'))
+                return self.send(200,report_xlsx(report,payload.get('language','en')),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
             if url.path=='/api/stage':
                 return self.send(200,solve_stage(payload['geometry'],payload.get('config'),payload.get('stage',0)))
             self.send(404,{'message':'Ruta no disponible.'})
