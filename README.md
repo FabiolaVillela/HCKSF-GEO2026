@@ -53,3 +53,12 @@ Se añaden verificaciones de etapas agrupadas, exclusión de nodos futuros, meca
 ## Colaboración
 
 Consulta `CONTRIBUTING.md` para el reparto de módulos y el contrato de datos. Trabaja en una rama y abre un pull request; las firmas compartidas y `schema.py` requieren coordinación con el equipo.
+
+
+### Deformada nodal por etapa
+
+La casilla **Mostrar deformada nodal** comienza apagada. Al activarla, la geometría original queda como referencia tenue y se superpone la deformada de las barras instaladas de la etapa seleccionada. El **factor visual** cambia solo el dibujo: `posición dibujada = posición original + factor × desplazamiento real`. Por ejemplo, 2 mm reales con factor 10 se dibujan como 20 mm. Las fuerzas, reacciones, desplazamientos reales y archivos de resultados conservan sus valores calculados; cambiar esta vista no solicita otro análisis.
+
+El factor admite valores de 0 a 100000. La cámara de referencia se conserva para que la amplificación sea visible. En etapas pendientes o sin equilibrio no se dibuja una deformada. Las barras unen con líneas rectas los nodos desplazados: esta vista no interpola la curvatura por flexión dentro de cada barra. Los controles están disponibles en el simulador HTML, el dashboard y el visor HTML exportable. La exportación abre la vista apagada por defecto, o conserva la elección explícita del dashboard.
+
+Verificación adicional del dibujo: `node --test tests/test_deformation.cjs`.

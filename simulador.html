@@ -159,7 +159,12 @@
 <div class="metric"><div class="metric-label">Carga del instalador</div><div id="worker-load">—</div></div>
 <div class="metric"><div class="metric-label">Desplazamiento máximo</div><div id="max-displacement">—</div></div>
 </div>
-<div class="viewport-card"><canvas id="viewport" role="img" aria-label="Estructura de la etapa. Arrastrar para girar, rueda para zoom y clic para seleccionar barra o apoyo."></canvas><div class="canvas-overlay">Verde: nueva · rojo: compresión · azul: tracción · gris continuo: sin solución · gris punteado: pendiente · naranja: apoyo</div><div class="instructions">Arrastra para girar · rueda para zoom · clic para consultar</div></div>
+<div class="config-strip" id="deformation-controls">
+<label class="config-group"><input id="show-deformation" type="checkbox" disabled> Mostrar deformada nodal</label>
+<label class="config-group">Factor visual × <input id="deformation-factor" type="number" min="0" max="100000" step="1" value="10" disabled></label>
+<span id="deformation-note" role="status" aria-live="polite">Vista apagada · los valores del cálculo son reales.</span>
+</div>
+<div class="viewport-card"><canvas id="viewport" role="img" aria-label="Estructura de la etapa. Arrastrar para girar, rueda para zoom y clic para seleccionar barra o apoyo."></canvas><div class="canvas-overlay">Verde: nueva · rojo: compresión · azul: tracción · gris continuo: sin solución · gris punteado: pendiente · naranja: apoyo · morado: deformada amplificada</div><div class="instructions">Arrastra para girar · rueda para zoom · clic para consultar</div></div>
 <div class="config-strip" style="margin-top:16px"><label>Seleccionar <select id="element-select" aria-label="Seleccionar barra o apoyo"><option value="">Sin selección</option></select></label><button class="btn" id="download-stage" disabled>Descargar etapa JSON</button></div>
 <div id="selection-detail" aria-live="polite">Selecciona una barra instalada o un apoyo.</div>
 <details style="margin-top:16px"><summary>Historial de etapas calculadas</summary><div id="stage-history"></div></details>
@@ -168,5 +173,6 @@
 input[type=number]{width:90px;padding:6px;border:1px solid var(--gray-29);border-radius:6px} .config-strip select{max-width:100%} .config-group{flex-wrap:wrap} table{width:100%;border-collapse:collapse}th,td{padding:8px;text-align:left;border-bottom:1px solid var(--border-light)} #selection-detail{overflow-wrap:anywhere}header{gap:12px;flex-wrap:wrap}.badge-pending{background:var(--gray-29);color:var(--black)}#import-report{white-space:pre-wrap;max-height:200px;overflow:auto} #support-nodes{max-width:100%} @media(max-width:600px){body{padding:10px}h1{font-size:1.1rem}.config-strip{padding:12px;gap:12px}.config-group{width:100%}.slider-row{gap:6px;flex-wrap:wrap}.slider-row input{min-width:130px}canvas{height:400px}.canvas-overlay{font-size:.7rem;left:8px;right:8px}.instructions{left:8px;right:8px}.metric{padding:10px} .progress-header{gap:10px;flex-wrap:wrap}}
 </style>
 <script>if(location.protocol==='file:'){document.getElementById('status-badge').textContent='MOTOR NO DISPONIBLE';document.getElementById('message').textContent='Para calcular etapas inicia: PYTHONPATH=src python -m domestage.server. Abre la dirección local que indique el programa.';}</script>
+<script src="/deformation.js"></script>
 <script src="/simulator.js" onerror="document.getElementById('message').textContent='No se pudo cargar el motor. Inicia PYTHONPATH=src python -m domestage.server y abre su dirección local.'"></script>
 </body></html>
