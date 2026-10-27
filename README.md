@@ -1,82 +1,55 @@
-Stage-by-Stage Construction Analysis for Steel Domes
+# DomeStage · análisis de montaje de domos
 
-A hackathon prototype that shows how forces and stability in a steel dome change as its bars are installed.
+Simulador de estructuras 3D que incorpora barras por etapas y calcula fuerzas internas, reacciones y desplazamientos con el motor de armaduras o pórticos del proyecto.
 
-Disclaimer: this is a demonstration prototype. It must not be used to authorize a real assembly.
+## Simulador conectado al motor estructural
 
-1. Problem
+El visor de montaje ahora calcula el equilibrio de cada etapa usando las barras instaladas, su peso propio y una carga nodal de instalador. Para abrir el simulador con su servidor de cálculo, desde la raíz del repositorio:
 
-At a company that designs and manufactures steel domes, the structure must be stable during construction, not only once it is finished. The idea is to analyze the structure every time one or several bars are installed, with the user defining how many.
+```bash
+python3 -m pip install -r requirements.txt
+PYTHONPATH=src python3 -m domestage.server --port 8503
+```
 
-2. Hackathon goal
+Abrir `http://127.0.0.1:8503`. `simulador.html` necesita ese servidor; abrirlo directamente como archivo o servirlo con un servidor estático no ejecuta el motor.
 
-Using a small example dome, show how these quantities evolve at each installation stage:
+La interfaz Streamlit también usa el mismo adaptador:
 
-Axial force and stress in the bars.
-Node displacements.
-Support reactions.
-Stability (detecting whether the active structure is a mechanism).
+```bash
+python3 -m streamlit run src/domestage/app.py
+```
 
-The focus is on making the calculation work and being able to explain it, not on delivering a complete product.
+### Qué se calcula en cada etapa
 
-3. Calculation model
-3D pin-jointed truss: bars carry axial force only. Each node has 3 degrees of freedom (x, y, z).
-Loads:
-Accumulated self-weight of the bars already installed.
-Installation load (for example, the weight of a person) at the node or bar assigned to each stage.
-Stages: start with the first ring already installed and activate bars per stage (1, 3 or N, as defined by the user).
-Solution: at each stage, a new equilibrium is solved using only the active bars. Bars not yet installed contribute neither weight nor stiffness.
-Stability: if the stiffness matrix is singular or nearly singular, the stage is flagged as "unstable" instead of crashing.
-Buckling indicator (optional): ratio between compressive force and Euler load, Pcr = π²EI/L².
-4. Inputs (fixed Excel template)
-Sheet	Columns
-Nodes	ID, x, y, z
-Bars	ID, node i, node j, profile, installation stage
-Profiles	name, area, moment of inertia (optional), elastic modulus E, density or weight per meter
-Supports	node, restraints (x, y, z)
-Loads	stage, application node, installation load magnitude
-Criteria	allowable stress or yield strength
+- Se conservan las barras inicialmente instaladas (etapa 0); las demás se ordenan por secuencia del modelo y se agrupan de 1 a 4 por etapa. Para DXF, se propone una secuencia por altura media; se debe revisar frente al plan real de montaje.
+- Solo las barras activas aportan peso y rigidez. Los nodos que pertenecen exclusivamente a barras futuras se excluyen de la matriz.
+- Conexiones articuladas: armadura espacial axial de 3 GDL/nodo, peso propio repartido entre extremos. Empotradas: pórtico espacial de 6 GDL/nodo, peso propio distribuido consistente.
+- Un solo instalador y sus herramientas se aplican verticalmente en el nodo j de la última barra nueva. La carga se desplaza con la etapa, no se acumula ni se multiplica por las barras del grupo. Etapa 0 sin instalador.
+- Los apoyos y sus restricciones se configuran por separado. Se proponen los nodos de cota mínima al importar y se pueden modificar.
+- Las fuerzas axiales, reacciones, desplazamientos y momentos proceden del motor existente. Los colores axiales representan el centro de cada barra; los máximos consideran las estaciones muestreadas. Una etapa con mecanismo no muestra valores de fuerza ni reacciones ficticias.
+- Cada cambio de geometría, material, perfil, conexión, apoyo, carga o agrupación invalida los resultados previos. La caché del motor usa el contenido completo de esos parámetros y la etapa.
+- La reproducción espera cada cálculo y se detiene en una etapa sin solución. Se puede seguir inspeccionando manualmente las siguientes etapas. El historial contiene únicamente resultados calculados; las demás etapas figuran como pendientes.
 
-Also, a validation case: a simple truss with a hand-calculated solution or, if available, a dome analyzed in SAP2000 or RISA.
+### Componentes de integración
 
-5. Outputs
-3D view of the dome colored by stress or utilization.
-Slider to step through the stages.
-Plot of maximum force versus stage.
-Results table per bar and per stage, with Excel export.
-Clear indication of unstable stages.
-6. Proposed technology
-Python with NumPy and SciPy (scipy.sparse).
-Pandas and openpyxl to read and write Excel.
-Plotly for the 3D view.
-Streamlit as the interface.
-7. Feasibility
-Memory: not an issue. The stiffness matrix is sparse and takes only a few MB, even for large domes.
-Time: each stage solves in milliseconds, so running through all stages takes seconds or a few minutes.
-The real difficulty is the physics: mechanisms during assembly, and the difference between a truss and real connections.
-8. Plan (4–5 hours)
-Hour	Task
-0:00–0:30	Excel template and a script that generates an example dome (about 60 bars)
-0:30–1:30	3D truss solver, supports, axial forces and reactions. Validate with a hand-calculated case
-1:30–2:15	Stage loop, accumulated self-weight, installation load and instability detection
-2:15–3:30	Streamlit interface with Excel upload, slider and 3D view
-3:30–4:15	Per-stage plot, table and export
-4:15–5:00	Polish, demo and list of limitations
-9. Out of scope
-CAD import.
-Free-form model editing.
-Multiple design codes and load combinations.
-Moments, local bending, code-based buckling checks and connection capacity.
-Real friction, shoring, cranes or temporary cables.
-Detailed physical assembly history and nonlinear (P-Δ) analysis.
-Polished interface.
-10. Limitations
-The pin-jointed truss is conservative: it may declare unstable something that actually stands thanks to rigid connections.
-Solving each stage from scratch is an approximation of the real process.
-Results are not a safety approval.
-11. After the hackathon
-Beam (frame) elements with 6 degrees of freedom per node.
-Buckling and code checks (AISC or other).
-CAD or DXF import.
-P-Δ analysis and temporary shoring.
-Assembly sequence optimization.
+`src/domestage/assembly.py` adapta la geometría al motor existente en `prototypes/rigid-frame/domecalc`, mantiene los identificadores originales y entrega resultados de etapa. `server.py` sirve solo el simulador, su script y los endpoints de cálculo/importación en localhost. La interfaz HTML y Streamlit usan ese mismo adaptador. El contrato `schema.py` y las firmas de los módulos pendientes de otros integrantes se mantienen.
+
+API local: `GET /api/catalog`, `GET /api/demo`, `POST /api/plan`, `POST /api/stage` (JSON) y `POST /api/import` (bytes DXF; `units` y `tolerance` en la URL). El resultado indica `status=stable`, `unstable`, `empty` o `error`; las fuerzas se reportan solo cuando se obtuvo equilibrio. El JSON de etapa incluye configuración, geometría, barras activas, cargas, axiales, reacciones y desplazamientos. Los IDs de claves del diccionario `forces` son cadenas JSON; los IDs en listas siguen siendo enteros.
+
+### Límites físicos
+
+Es un equilibrio elástico lineal independiente sobre la geometría de referencia de cada etapa. No simula activación de barras sobre una forma deformada, deformaciones o tensiones residuales acumuladas, pandeo, resistencia, segundo orden, grúas ni apuntalamientos. “Equilibrio calculado” no constituye una comprobación de capacidad ni de seguridad del montaje. En armadura axial no se calcula flexión local de barras por su propio peso; las rotaciones exportadas son ceros de compatibilidad, no giros calculados.
+
+La importación valida conectividad, duplicados, longitudes nulas y unidades; no divide cruces interiores ni convierte curvas en barras. Sigue limitada a 500 nodos, 5000 barras y archivos de hasta 20 MB. Material y perfil son uniformes y nominales.
+
+### Validación
+
+```bash
+python3 -m pytest tests prototypes/rigid-frame/tests -q
+```
+
+Se añaden verificaciones de etapas agrupadas, exclusión de nodos futuros, mecanismos intermedios y recuperación al completar un trípode, equilibrio de reacciones, carga única del instalador frente a solución manual, coincidencia de la etapa final con el solver directo, invalidación por cambios de geometría/material/apoyos y navegación del dashboard. El solver original `solve_truss` del equipo sigue pendiente y conserva sus dos pruebas xfail; el simulador de montaje utiliza el motor implementado en el prototipo a través del adaptador.
+
+## Colaboración
+
+Consulta `CONTRIBUTING.md` para el reparto de módulos y el contrato de datos. Trabaja en una rama y abre un pull request; las firmas compartidas y `schema.py` requieren coordinación con el equipo.

@@ -12,6 +12,8 @@ class ViewerExportTests(unittest.TestCase):
     def test_embedded_data_safe_and_reactions_preserved(self):
         layer = '</script><img src=x onerror=alert(1)>'
         result = analyze(Model([[0, 0, 0], [3, 0, 0]], [(0, 1, layer)], {0: tuple(range(6))}))
+        result['nodes'][0]['source_id']=501
+        result['elements'][0]['source_id']=601
         result['configuration'] = {'material':'Aluminio','profile':'HSS circular 4 pulgadas','connections':'Empotradas'}
         with tempfile.TemporaryDirectory() as directory:
             html = export_viewer(result, Path(directory) / 'viewer.html').read_text()
@@ -22,6 +24,8 @@ class ViewerExportTests(unittest.TestCase):
         data = json.loads(payload)
         self.assertEqual(data['bars'][0]['layer'], layer)
         self.assertAlmostEqual(data['nodes'][0]['r'][2], result['nodes'][0]['reaction'][2] / 1000)
+        self.assertEqual(data['nodes'][0]['label'],501)
+        self.assertEqual(data['bars'][0]['label'],601)
         self.assertTrue(data['nodes'][0]['s'])
         self.assertTrue(data['nodes'][0]['rFixed'])
         self.assertEqual(data['meta']['material'],'Aluminio')
