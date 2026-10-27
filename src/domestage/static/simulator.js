@@ -155,44 +155,89 @@ function history(){
 }
 
 // PR 11 Deformation & Reactions integration
-function updateDeformation(){
-  const enabled=Boolean(current?.stable&&current.displacements?.length);
-  $('show-deformation').disabled=!enabled; $('deformation-factor').disabled=!enabled;
-  $('show-reactions').disabled=!enabled; $('reaction-mode').disabled=!enabled;
-  if(!enabled){
-    $('show-deformation').checked=false; $('show-reactions').checked=false;
-    $('reaction-legend').hidden=true; $('reaction-panel').hidden=true;
-  }
-  const factor=Math.max(0,+$('deformation-factor').value||0);
-  $('deformation-note').textContent=!enabled?'Deflection unavailable without stable solution.':
-    $('show-deformation').checked?`Amplified visual deflection ×${factor}. Structural values remain exact.`:'True scale (deflection view off).';
-  $('reaction-note').textContent=!enabled?'Reactions unavailable without stable solution.':
-    $('show-reactions').checked?`Displaying support reaction vectors (${$('reaction-mode').value}).`:'Support reaction vectors hidden.';
-  $('reaction-legend').hidden=!$('show-reactions').checked||$('reaction-mode').value==='total';
-  reactionTable();
+function deformationView(){
+  if(!window.DomeDeformation) return {available:false, enabled:false, points:new Map()};
+  return window.DomeDeformation.view(geometry, current, $('show-deformation').checked, +$('deformation-factor').value);
 }
 
-function reactionTable(){
+function updateReactions(){
+  const available=Boolean(current?.stable&&current.reactions?.length), show=$('show-reactions').checked&&available;
+  $('show-reactions').disabled=!available;
+  $('reaction-panel').hidden=!show;
+  $('reaction-mode').disabled=!show;
+  const radial=$('reaction-mode').value==='cylindrical';
+  $('reaction-legend').hidden=!show||$('reaction-mode').value==='total';
+  const legend=$('reaction-legend').querySelectorAll('span');
+  if(legend.length===3){
+    ['#15803D','#DC2626','#2563EB'].forEach((color,i)=>{
+      legend[i].textContent=(radial?['Rr','Rt','Rz']:['X','Y','Z'])[i]+' · '+['Green','Red','Blue'][i];
+    });
+  }
+  $('reaction-note').textContent=!available?'Reactions unavailable without stable solution.':
+    show?'Reaction vectors in global axes. Select a support to view values.':'Support reaction vectors hidden.';
+  if(show&&radial&&window.DomeReactions){
+    const c=window.DomeReactions.center(geometry);
+    if(c)$('reaction-note').textContent=`Support center in XY: (${fmt(c[0])}, ${fmt(c[1])}) m · Rr: radial outwards, Rt: tangential CCW.`;
+  }
+  reactionTable(show, radial);
+}
+
+function reactionTable(show, radial){
   const panel=$('reaction-panel'), div=$('reaction-table'); div.replaceChildren();
-  if(!$('show-reactions').checked||!current?.reactions?.length){panel.hidden=true; return;}
+  if(!show||!current?.reactions?.length){panel.hidden=true; return;}
   panel.hidden=false;
   const t=document.createElement('table'), head=t.insertRow();
-  for(const label of ['Support Node','Rx (kN)','Ry (kN)','Rz (kN)','R Total (kN)','Mx (kN·m)','My (kN·m)','Mz (kN·m)','Radial Rr','Tangential Rt']){
-    const th=document.createElement('th'); th.textContent=label; head.append(th);
+  for(const label of ['Node',...(radial?['Rr','Rt','Rz']:['Rx','Ry','Rz']),'Mx (kN·m)','My (kN·m)','Mz (kN·m)']){
+    const th=document.createElement('th'); th.scope='col'; th.textContent=label; head.append(th);
   }
   const center=window.DomeReactions?window.DomeReactions.center(geometry):null;
   for(const r of current.reactions){
-    const row=t.insertRow(), node=geometry.nodes.find(n=>n.id===r.node_id);
-    const total=Math.hypot(...r.values.slice(0,3))/1000;
-    const cyl=window.DomeReactions?window.DomeReactions.cylindrical(node,r.values,center):null;
-    row.insertCell().textContent='Node '+r.node_id;
-    for(let i=0;i<3;i++)row.insertCell().textContent=fmt(r.values[i]/1000);
-    row.insertCell().textContent=fmt(total);
-    for(let i=3;i<6;i++)row.insertCell().textContent=fmt(r.values[i]/1000);
-    row.insertCell().textContent=cyl?fmt(cyl.values[0]/1000)+' kN':'—';
-    row.insertCell().textContent=cyl?fmt(cyl.values[1]/1000)+' kN':'—';
+    const row=t.insertRow(); row.insertCell().textContent=r.node_id;
+    const converted=radial&&window.DomeReactions?window.DomeReactions.cylindrical(geometry.nodes.find(n=>n.id===r.node_id),r.values,center):null;
+    const values=radial?[...(converted?.values||[null,null,r.values[2]]),...r.values.slice(3)]:r.values;
+    for(const value of values)row.insertCell().textContent=value===null?'N/A':fmt(value/1000);
   }
   div.append(t);
+}
+
+function updateDeformation(){
+  updateReactions();
+  const state=deformationView(), factor=$('deformation-factor');
+  $('show-deformation').disabled=!state.available;
+  factor.disabled=!state.available||!$('show-deformation').checked;
+  if(!state.available)$('deformation-note').textContent='Deflection view unavailable without stage equilibrium and displacements.';
+  else if(!state.factor_valid)$('deformation-note').textContent='Enter a visual scale factor between 0 and 100000.';
+  else if(!state.enabled)$('deformation-note').textContent='Deflection view off · Max true displacement: '+fmt(state.max_real_mm)+' mm.';
+  else $('deformation-note').textContent='Amplified ×'+fmt(state.factor)+' · Real max '+fmt(state.max_real_mm)+' mm → Visual '+fmt(state.max_drawn_mm)+' mm.';
+}
+
+function drawReactions(){
+  if(!$('show-reactions').checked||!current?.stable||!window.DomeReactions)return;
+  const max=Math.max(...current.reactions.map(r=>Math.hypot(...r.values.slice(0,3))),1e-12);
+  const mode=$('reaction-mode').value, origin=window.DomeReactions.center(geometry);
+  ctx.save(); ctx.setLineDash([]); ctx.lineWidth=2; ctx.font='11px sans-serif';
+  for(const r of current.reactions){
+    const p=projected.get(r.node_id); if(!p)continue;
+    let vectors;
+    if(mode==='cylindrical'){
+      const c=window.DomeReactions.cylindrical(geometry.nodes.find(n=>n.id===r.node_id),r.values,origin);
+      vectors=c?c.values.map((value,i)=>({v:c.vectors[i],value,label:['Rr','Rt','Rz'][i],color:['#15803D','#DC2626','#2563EB'][i]})):[{v:[0,0,r.values[2]],value:r.values[2],label:'Rz',color:'#2563EB'}];
+    } else vectors=mode==='components'?r.values.slice(0,3).map((value,i)=>({v:[0,1,2].map(j=>i===j?value:0),value,label:['Rx','Ry','Rz'][i],color:['#15803D','#DC2626','#2563EB'][i]})):[{v:r.values.slice(0,3),value:Math.hypot(...r.values.slice(0,3)),label:'R',color:'#001B96'}];
+
+    for(const [i,vector] of vectors.entries()){
+      ctx.strokeStyle=vector.color; ctx.fillStyle=vector.color;
+      const v=rotate(vector.v.map(x=>x/max*65)), dx=v[0], dy=-v[1], end=[p[0]+dx, p[1]+dy], length=Math.hypot(dx,dy);
+      if(length>1){
+        const a=Math.atan2(dy,dx); ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(...end); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(...end); ctx.lineTo(end[0]-7*Math.cos(a-.45), end[1]-7*Math.sin(a-.45)); ctx.lineTo(end[0]-7*Math.cos(a+.45), end[1]-7*Math.sin(a+.45)); ctx.closePath(); ctx.fill();
+      }
+      if(selected==='s'+r.node_id){
+        const text=vector.label+' · Node '+r.node_id+' · '+fmt(vector.value/1000)+' kN', x=p[0]+12, y=p[1]-15-i*17;
+        ctx.save(); ctx.fillStyle='rgba(255,255,255,.94)'; ctx.fillRect(x-3,y-12,ctx.measureText(text).width+6,16); ctx.restore(); ctx.fillText(text,x,y);
+      }
+    }
+  }
+  ctx.restore();
 }
 
 // 3D Canvas Rendering
@@ -200,7 +245,7 @@ function draw(){
   const w=canvas.clientWidth, h=canvas.clientHeight, dpr=window.devicePixelRatio||1;
   canvas.width=w*dpr; canvas.height=h*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.fillStyle='#FFFFFF'; ctx.fillRect(0,0,w,h);
-  if(!geometry)return;
+  deformedSegments=[]; if(!geometry)return;
 
   const min=[0,1,2].map(i=>Math.min(...geometry.nodes.map(n=>[n.x,n.y,n.z][i]))),
         max=[0,1,2].map(i=>Math.max(...geometry.nodes.map(n=>[n.x,n.y,n.z][i]))),
@@ -213,20 +258,13 @@ function draw(){
     return [n.id,[w/2+p[0]*scale, h/2-p[1]*scale, p[2]]];
   }));
 
-  const factor=Math.max(0,+$('deformation-factor').value||0);
-  const showDef=$('show-deformation').checked&&Boolean(current?.stable)&&window.DomeDeformation;
-  const deformedCoords=showDef?window.DomeDeformation.displaced(geometry,current.displacements,factor):null;
-  const defProjected=deformedCoords?new Map(Array.from(deformedCoords.entries()).map(([id,pos])=>{
-    const p=rotate([pos[0]-center[0],pos[1]-center[1],pos[2]-center[2]]);
-    return [id,[w/2+p[0]*scale, h/2-p[1]*scale, p[2]]];
-  })):projected;
-
+  const deformation=deformationView();
   const active=new Set(plan[currentStage]?.active_bar_ids||[]), fresh=new Set(plan[currentStage]?.new_bar_ids||[]);
   segments=geometry.bars.map(b=>({b, a:projected.get(b.i), z:projected.get(b.j)})).sort((a,b)=>(a.a[2]+a.z[2])-(b.a[2]+b.z[2]));
-  deformedSegments=showDef?geometry.bars.filter(b=>active.has(b.id)).map(b=>({b, a:defProjected.get(b.i), z:defProjected.get(b.j)})).sort((a,b)=>(a.a[2]+a.z[2])-(b.a[2]+b.z[2])):segments;
 
   // 1. Ghost & Installed Bars
   for(const s of segments){
+    ctx.globalAlpha=deformation.enabled ? 0.35 : 1;
     const installed=active.has(s.b.id), f=current?.stable?current.forces[s.b.id]:null;
     ctx.beginPath(); ctx.moveTo(s.a[0],s.a[1]); ctx.lineTo(s.z[0],s.z[1]);
     ctx.setLineDash(installed?[]:[3,4]);
@@ -234,19 +272,25 @@ function draw(){
     ctx.lineWidth=selected==='b'+s.b.id?4.5:installed?2.2:1.0;
     ctx.stroke();
   }
-  ctx.setLineDash([]);
+  ctx.globalAlpha=1;
 
-  // 2. Optional Amplified Deflection wireframe
-  if(showDef){
+  // 2. Amplified Deflection wireframe
+  const deformedProjection=new Map();
+  if(deformation.enabled){
+    for(const [id,world] of deformation.points){
+      const p=rotate(world.map((v,i)=>v-center[i]));
+      deformedProjection.set(id,[w/2+p[0]*scale, h/2-p[1]*scale, p[2]]);
+    }
+    deformedSegments=geometry.bars.filter(b=>active.has(b.id)).map(b=>({b, a:deformedProjection.get(b.i), z:deformedProjection.get(b.j)})).sort((a,b)=>(a.a[2]+a.z[2])-(b.a[2]+b.z[2]));
+    ctx.setLineDash([]); ctx.strokeStyle='#7C3AED';
     for(const s of deformedSegments){
-      ctx.beginPath(); ctx.moveTo(s.a[0],s.a[1]); ctx.lineTo(s.z[0],s.z[1]);
-      ctx.strokeStyle=selected==='b'+s.b.id?'#000000':'#7C3AED';
-      ctx.lineWidth=selected==='b'+s.b.id?4.5:2.4;
-      ctx.stroke();
+      ctx.lineWidth=selected==='b'+s.b.id?4.5:2.5;
+      ctx.beginPath(); ctx.moveTo(s.a[0],s.a[1]); ctx.lineTo(s.z[0],s.z[1]); ctx.stroke();
     }
   }
 
   // 3. Base Support nodes
+  ctx.setLineDash([]);
   for(const id of geometry.support_nodes){
     const p=projected.get(id);
     ctx.beginPath(); ctx.arc(p[0],p[1],selected==='s'+id?7.5:4.5,0,2*Math.PI);
@@ -254,45 +298,7 @@ function draw(){
   }
 
   // 4. Reactions vectors from PR 11
-  if($('show-reactions').checked&&current?.reactions?.length){
-    const maxR=Math.max(1,...current.reactions.map(r=>Math.hypot(...r.values.slice(0,3)))),
-          arrowLen=Math.min(w,h)*0.09, mode=$('reaction-mode').value;
-    const centerNode=window.DomeReactions?window.DomeReactions.center(geometry):null;
-    for(const r of current.reactions){
-      const p=projected.get(r.node_id); if(!p)continue;
-      const rx=r.values[0], ry=r.values[1], rz=r.values[2];
-      const selectedSup=selected==='s'+r.node_id;
-      const drawArrow=(vx,vy,vz,color)=>{
-        const mag=Math.hypot(vx,vy,vz); if(mag<=1e-9)return;
-        const norm=mag/maxR*arrowLen;
-        const rot=rotate([vx/mag*norm, vy/mag*norm, vz/mag*norm]);
-        const tip=[p[0]+rot[0], p[1]-rot[1]];
-        ctx.beginPath(); ctx.moveTo(p[0],p[1]); ctx.lineTo(tip[0],tip[1]);
-        ctx.strokeStyle=color; ctx.lineWidth=selectedSup?3:1.8; ctx.stroke();
-        const angle=Math.atan2(tip[1]-p[1], tip[0]-p[0]);
-        ctx.beginPath();
-        ctx.lineTo(tip[0]-7*Math.cos(angle-0.45), tip[1]-7*Math.sin(angle-0.45));
-        ctx.lineTo(tip[0], tip[1]);
-        ctx.lineTo(tip[0]-7*Math.cos(angle+0.45), tip[1]-7*Math.sin(angle+0.45));
-        ctx.stroke();
-      };
-      if(mode==='total'){
-        drawArrow(rx,ry,rz,selectedSup?'#000000':'#F59E0B');
-      } else if(mode==='components'){
-        drawArrow(rx,0,0,'#15803D'); drawArrow(0,ry,0,'#DC2626'); drawArrow(0,0,rz,'#2563EB');
-      } else if(mode==='cylindrical'&&window.DomeReactions){
-        const node=geometry.nodes.find(n=>n.id===r.node_id);
-        const cyl=window.DomeReactions.cylindrical(node,r.values,centerNode);
-        if(cyl){
-          drawArrow(...cyl.vectors[0],'#15803D'); drawArrow(...cyl.vectors[1],'#D97706'); drawArrow(...cyl.vectors[2],'#2563EB');
-        }
-      }
-      if(selectedSup){
-        ctx.fillStyle='#000000'; ctx.font='bold 11px sans-serif';
-        ctx.fillText(`R: ${fmt(Math.hypot(rx,ry,rz)/1000)} kN`, p[0]+8, p[1]-10);
-      }
-    }
-  }
+  drawReactions();
 }
 
 // Interaction Listeners
