@@ -12,6 +12,10 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+SOURCE = Path(__file__).resolve().parents[1]
+if str(SOURCE) not in sys.path:
+    sys.path.insert(0, str(SOURCE))
+
 PROTOTYPE = Path(__file__).resolve().parents[2] / 'prototypes' / 'rigid-frame'
 if str(PROTOTYPE) not in sys.path:
     sys.path.insert(0, str(PROTOTYPE))
@@ -67,11 +71,17 @@ def model_figure(result, scale):
 
 
 st.set_page_config(page_title='Steel dome analysis', layout='wide')
+mode = st.sidebar.selectbox('Analysis mode', ['Construction stages (truss)', 'Completed dome (rigid frame)'], key='analysis_mode')
+if mode == 'Construction stages (truss)':
+    from domestage.stage_app import render
+    render()
+    st.stop()
+
 st.title('Steel dome analysis')
 st.caption('Rigid-frame prototype · synthetic dome · SI units')
 st.warning('Demonstration only. Do not use these results to authorize construction or structural design.')
-st.info('This demo analyzes the completed dome with rigid connections under self-weight. '
-        'Construction stages and the pin-jointed truss model are not implemented yet.')
+st.info('This mode analyzes the completed dome with rigid connections under self-weight. '
+        'Choose Construction stages (truss) in the sidebar for the pin-jointed stage model.')
 with st.sidebar:
     st.header('Circular steel tube')
     with st.form('analysis_settings'):

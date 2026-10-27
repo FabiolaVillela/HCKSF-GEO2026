@@ -1,5 +1,10 @@
 Stage-by-Stage Construction Analysis for Steel Domes
 
+The construction-stage truss workflow and the independent rigid-frame demo are now
+available in the Streamlit app. See [Run the app and import models](docs/USAGE.md)
+for installation, supported Excel/DXF inputs, model assumptions, and validation.
+The original hackathon proposal follows below.
+
 A hackathon prototype that shows how forces and stability in a steel dome change as its bars are installed.
 
 Disclaimer: this is a demonstration prototype. It must not be used to authorize a real assembly.
