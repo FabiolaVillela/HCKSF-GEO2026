@@ -29,12 +29,15 @@ is singular. Expected: `stable = False`, no exception.
 
 | Case | Quantity | Hand | Reference | Team solver |
 |---|---|---|---|---|
-| A | bar force [N] | −471.405 | −471.405 | _pending_ |
-| A | apex uz [m] | −4.714e-5 | −4.714e-5 | _pending_ |
-| B | bar force [N] | −479.105 | −479.105 | _pending_ |
-| C | stable | False | False | _pending_ |
+| A | bar force [N] | −471.405 | −471.405 | −471.405 (pass) |
+| A | apex uz [m] | −4.714e-5 | −4.714e-5 | −4.714e-5 (pass) |
+| B | bar force [N] | −479.105 | −479.105 | −479.105 (pass) |
+| C | stable | False | False | False (pass) |
 
-Fill the last column after `solver.py` lands; document any difference and its cause.
+Team solver results were obtained on 2026-10-27 against `origin/feature/app-demo` at commit `5fda564`
+(Alex Algara's solver). That branch was **not yet merged into `main`** at the time; re-run
+`python validation/validate.py` after it is. Tolerances: relative 1e-6 for forces, 1e-3 for displacement.
+No differences were found.
 
 ## Not yet covered
 
