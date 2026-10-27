@@ -71,13 +71,21 @@ function updateReactions(){
  $('show-reactions').disabled=!available;
  $('reaction-panel').hidden=!show;
  $('reaction-mode').disabled=!show;
- $('reaction-legend').hidden=!show||$('reaction-mode').value!=='components';
+ const radial=$('reaction-mode').value==='cylindrical';
+ $('reaction-legend').hidden=!show||$('reaction-mode').value==='total';
+ const legend=$('reaction-legend').querySelectorAll('span');
+ ['#15803D','#DC2626','#2563EB'].forEach((color,i)=>{legend[i].textContent=(radial?['Rr','Rt','Rz']:['X','Y','Z'])[i]+' · '+['verde','rojo','azul'][i];});
  $('reaction-note').textContent=!available?'Reacciones no disponibles sin equilibrio de esta etapa.':show?'Vectores en ejes globales · escala común independiente de la deformada. Selecciona un apoyo para ver sus etiquetas.':'Reacciones ocultas.';
+ if(show&&radial){const c=DomeReactions.center(geometry);$('reaction-note').textContent='Centro de apoyos en planta: ('+fmt(c[0])+', '+fmt(c[1])+') m · Rr + hacia afuera, Rt + antihorario visto desde +Z, Rz + arriba. En el eje Rr/Rt no están definidos.';}
  const box=$('reaction-table');box.replaceChildren();
  if(!show)return;
  const t=document.createElement('table'),head=t.insertRow();
- for(const label of ['Nodo','Rx','Ry','Rz','Mx','My','Mz']){const th=document.createElement('th');th.scope='col';th.textContent=label;head.append(th);}
- for(const r of current.reactions){const row=t.insertRow();row.insertCell().textContent=r.node_id;for(const value of r.values)row.insertCell().textContent=fmt(value/1000);}
+ for(const label of ['Nodo',...(radial?['Rr','Rt','Rz']:['Rx','Ry','Rz']),'Mx global','My global','Mz global']){const th=document.createElement('th');th.scope='col';th.textContent=label;head.append(th);}
+ for(const r of current.reactions){const row=t.insertRow();row.insertCell().textContent=r.node_id;
+ const converted=radial?DomeReactions.cylindrical(geometry.nodes.find(n=>n.id===r.node_id),r.values,DomeReactions.center(geometry)):null;
+ const values=radial?[...(converted?.values||[null,null,r.values[2]]),...r.values.slice(3)]:r.values;
+ for(const value of values)row.insertCell().textContent=value===null?'No definido':fmt(value/1000);}
+
  box.append(t);
 }
 for(const id of ['show-reactions','reaction-mode'])$(id).addEventListener('input',()=>{updateReactions();draw();});
@@ -85,11 +93,15 @@ function drawReactions(){
  if(!$('show-reactions').checked||!current?.stable)return;
  // Una escala común para resultantes y componentes conserva sus proporciones.
  const max=Math.max(...current.reactions.map(r=>Math.hypot(...r.values.slice(0,3))),1e-12);
- const components=$('reaction-mode').value==='components';
+ const mode=$('reaction-mode').value,origin=DomeReactions.center(geometry);
  ctx.save();ctx.setLineDash([]);ctx.lineWidth=2;ctx.font='12px sans-serif';
  for(const r of current.reactions){
    const p=projected.get(r.node_id);if(!p)continue;
-   const vectors=components?r.values.slice(0,3).map((value,i)=>({v:[0,1,2].map(j=>i===j?value:0),value,label:['Rx','Ry','Rz'][i],color:['#15803D','#DC2626','#2563EB'][i]})):[{v:r.values.slice(0,3),value:Math.hypot(...r.values.slice(0,3)),label:'R',color:'#087F8C'}];
+   let vectors;
+   if(mode==='cylindrical'){
+     const c=DomeReactions.cylindrical(geometry.nodes.find(n=>n.id===r.node_id),r.values,origin);
+     vectors=c?c.values.map((value,i)=>({v:c.vectors[i],value,label:['Rr','Rt','Rz'][i],color:['#15803D','#DC2626','#2563EB'][i]})):[{v:[0,0,r.values[2]],value:r.values[2],label:'Rz (Rr/Rt sin definir)',color:'#2563EB'}];
+   }else vectors=mode==='components'?r.values.slice(0,3).map((value,i)=>({v:[0,1,2].map(j=>i===j?value:0),value,label:['Rx','Ry','Rz'][i],color:['#15803D','#DC2626','#2563EB'][i]})):[{v:r.values.slice(0,3),value:Math.hypot(...r.values.slice(0,3)),label:'R',color:'#087F8C'}];
    for(const [i,vector] of vectors.entries()){
      ctx.strokeStyle=vector.color;ctx.fillStyle=vector.color;
      const v=rotate(vector.v.map(x=>x/max*65)),dx=v[0],dy=-v[1],end=[p[0]+dx,p[1]+dy],length=Math.hypot(dx,dy);

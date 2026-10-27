@@ -163,7 +163,7 @@
 <label class="config-group"><input id="show-deformation" type="checkbox" disabled> Mostrar deformada nodal</label>
 <label class="config-group">Factor visual × <input id="deformation-factor" type="number" min="0" max="100000" step="1" value="10" disabled></label>
 <label class="config-group"><input id="show-reactions" type="checkbox" disabled> Mostrar reacciones en apoyos</label>
-<label class="config-group">Vectores de reacción <select id="reaction-mode" disabled><option value="total">Resultante total</option><option value="components">Componentes X, Y, Z</option></select></label>
+<label class="config-group">Vectores de reacción <select id="reaction-mode" disabled><option value="total">Resultante total</option><option value="components">Componentes X, Y, Z</option><option value="cylindrical">Radial Rr, tangencial Rt, vertical Rz</option></select></label>
 <span id="reaction-legend" hidden><span style="color:#15803D">X · verde</span> / <span style="color:#DC2626">Y · rojo</span> / <span style="color:#2563EB">Z · azul</span></span>
 <span id="reaction-note" role="status" aria-live="polite"></span>
 <span id="deformation-note" role="status" aria-live="polite">Vista apagada · los valores del cálculo son reales.</span>
@@ -179,5 +179,6 @@ input[type=number]{width:90px;padding:6px;border:1px solid var(--gray-29);border
 </style>
 <script>if(location.protocol==='file:'){document.getElementById('status-badge').textContent='MOTOR NO DISPONIBLE';document.getElementById('message').textContent='Para calcular etapas inicia: PYTHONPATH=src python -m domestage.server. Abre la dirección local que indique el programa.';}</script>
 <script src="/deformation.js"></script>
+<script src="/reactions.js"></script>
 <script src="/simulator.js" onerror="document.getElementById('message').textContent='No se pudo cargar el motor. Inicia PYTHONPATH=src python -m domestage.server y abre su dirección local.'"></script>
 </body></html>
