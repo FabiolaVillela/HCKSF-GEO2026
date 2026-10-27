@@ -2,7 +2,7 @@
 (()=>{
 const $=id=>document.getElementById(id), canvas=$('viewport'), ctx=canvas.getContext('2d');
 let geometry=null, plan=[], currentStage=0, current=null, revision=0, requestId=0, playing=false, selected='', segments=[], projected=new Map(), deformedSegments=[];
-const calculated=new Map(); let q=normalize([.87,-.35,.12,.32]), zoom=1; const pointers=new Map(); let dragged=false, pinch=null, sliderTimer;
+const calculated=new Map(); let series=null, seriesToken=0; let q=normalize([.87,-.35,.12,.32]), zoom=1; const pointers=new Map(); let dragged=false, pinch=null, sliderTimer;
 let supportOverrides = {}; // {node_id: 'articulado' | 'empotrado'}
 
 const fmt=(x,n=3)=>Number(x).toLocaleString('en-US',{maximumFractionDigits:n});
@@ -50,7 +50,7 @@ function populateSupports(){
 }
 
 async function replan(reset=false){
-  const rev=++revision; stop(); calculated.clear();
+  const rev=++revision; stop(); calculated.clear(); clearCharts();
   $('stage-history').textContent='Pending calculation.'; clearAnalysis();
   if(!geometry){$('message').textContent='Load a valid geometry model.'; return;}
   $('message').textContent='Planning stage assembly sequence…';
@@ -89,7 +89,7 @@ async function setStage(stage){
       $('max-compression').textContent='−'+fmt(value.max_compression_kn)+' kN';
       $('max-displacement').textContent=fmt(value.max_displacement_mm)+' mm';
     }
-    $('download-stage').disabled=false; updateDeformation(); selectionDetail(); history(); draw(); return value;
+    $('download-stage').disabled=false; updateDeformation(); selectionDetail(); history(); draw(); renderCharts(); return value;
   }catch(error){
     if(token!==requestId||rev!==revision)return null; current=null;
     badge('ERROR','error'); $('message').textContent=error.message; updateDeformation(); selectionDetail(); draw(); return null;
@@ -379,7 +379,7 @@ $('csv-import-input').addEventListener('change', function(e){
 
 async function importDXF(){
   const file=$('dxf-file-input').files[0]; if(!file)return;
-  const rev=++revision; stop(); calculated.clear(); geometry=null; plan=[]; clearAnalysis();
+  const rev=++revision; stop(); calculated.clear(); clearCharts(); geometry=null; plan=[]; clearAnalysis();
   supportOverrides={}; $('message').textContent='Reading DXF wireframe connectivity…';
   try{
     const value=await api('/api/import?units='+encodeURIComponent($('dxf-units').value)+'&tolerance='+encodeURIComponent(+$('dxf-tolerance').value/1000),null,{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:await file.arrayBuffer()});
@@ -433,6 +433,82 @@ canvas.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);pinch=n
 canvas.style.touchAction='none';
 canvas.addEventListener('wheel',e=>{e.preventDefault(); zoom=Math.max(.25,Math.min(10,zoom*Math.exp(-e.deltaY*.001))); draw();},{passive:false});
 new ResizeObserver(draw).observe(canvas);
+
+const SVG='http://www.w3.org/2000/svg';
+function el(tag,attrs={},text){const e=document.createElementNS(SVG,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,v);if(text!==undefined)e.textContent=text;return e;}
+function niceMax(v){if(!(v>0))return 1;const p=10**Math.floor(Math.log10(v)),m=v/p;return (m<=1?1:m<=2?2:m<=5?5:10)*p;}
+function clearCharts(){++seriesToken;series=null;$('btn-charts-csv').disabled=true;$('btn-charts').disabled=false;$('charts-message').textContent='Compute all stages to see how the maximum axial force and maximum deflection change as assembly progresses.';renderCharts();}
+const OUTLIER_FACTOR=20;
+function median(v){const a=[...v].sort((x,y)=>x-y),m=a.length>>1;return a.length%2?a[m]:(a[m-1]+a[m])/2;}
+function chart(svg,lines,unit,emptyText){
+ svg.replaceChildren();const W=600,H=340,L=62,R=16,T=18,B=86,pw=W-L-R,ph=H-T-B;
+ const useLog=$('chart-log').checked,useClip=$('chart-clip').checked;
+ const x=p=>L+p/100*pw;
+ const values=series?series.flatMap(s=>lines.map(l=>s[l.key])).filter(v=>v!==null&&v!==undefined&&Number.isFinite(v)):[];
+ const positive=values.filter(v=>v>0);
+ // Recorte: el eje se limita a OUTLIER_FACTOR × la mediana de los valores positivos.
+ let cap=Infinity;
+ if(useClip&&positive.length){const c=OUTLIER_FACTOR*median(positive);if(Math.max(...positive)>c)cap=c;}
+ const inRange=values.filter(v=>v<=cap),dataMax=inRange.length?Math.max(...inRange):0;
+ let edge=Infinity;
+ let y,ticks;
+ if(useLog&&positive.length){
+  const pin=positive.filter(v=>v<=cap),lo=10**Math.floor(Math.log10(Math.min(...(pin.length?pin:positive)))),hi=10**Math.ceil(Math.log10(Math.max(dataMax,lo*10)));
+  if(cap<Infinity)edge=hi;
+  const span=Math.log10(hi)-Math.log10(lo);
+  y=v=>T+ph-(Math.log10(Math.max(v,lo))-Math.log10(lo))/span*ph;
+  ticks=[];for(let e=Math.log10(lo);e<=Math.log10(hi)+1e-9;e++)ticks.push(10**e);
+ }else{
+  const top=niceMax(dataMax*1.05);if(cap<Infinity)edge=top;
+  y=v=>T+ph-Math.min(v,top)/top*ph;ticks=[0,1,2,3,4,5].map(i=>top*i/5);
+ }
+ for(const v of ticks)svg.append(el('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),class:'chart-grid'}),el('text',{x:L-6,y:y(v)+4,'text-anchor':'end',class:'chart-label'},fmt(v,v<10?2:1)));
+ if(edge<Infinity)svg.append(el('line',{x1:L,x2:W-R,y1:T,y2:T,stroke:'#F59E0B','stroke-width':1.5,'stroke-dasharray':'2 3'}));
+ const yc=v=>v>cap?T:y(v);
+ for(const p of [0,25,50,75,100])svg.append(el('line',{x1:x(p),x2:x(p),y1:T,y2:T+ph,class:'chart-grid'}),el('text',{x:x(p),y:T+ph+16,'text-anchor':'middle',class:'chart-label'},p+'%'));
+ svg.append(el('line',{x1:L,x2:L,y1:T,y2:T+ph,class:'chart-axis'}),el('line',{x1:L,x2:W-R,y1:T+ph,y2:T+ph,class:'chart-axis'}));
+ svg.append(el('text',{x:L+pw/2,y:T+ph+34,'text-anchor':'middle',class:'chart-title'},'Assembly progress (% of bars installed)'));
+ svg.append(el('text',{x:14,y:T+ph/2,'text-anchor':'middle',class:'chart-title',transform:`rotate(-90 14 ${T+ph/2})`},unit+(useLog?' · log':'')));
+ if(!series){svg.append(el('text',{x:L+pw/2,y:T+ph/2,'text-anchor':'middle',class:'chart-label'},emptyText));return 0;}
+ let clipped=0;
+ for(const l of lines){
+  let d='';let pen=false;
+  for(const s of series){const v=s[l.key];if(v===null||v===undefined){pen=false;continue;}d+=(pen?'L':'M')+x(s.progress_pct).toFixed(1)+' '+yc(v).toFixed(1)+' ';pen=true;}
+  if(d)svg.append(el('path',{d,fill:'none',stroke:l.color,'stroke-width':l.width||2,'stroke-opacity':l.opacity||1,'stroke-linejoin':'round'}));
+  for(const s of series){const v=s[l.key];if(v===null||v===undefined)continue;const px=x(s.progress_pct),label=`${l.label} · stage ${s.stage} · ${fmt(s.progress_pct,1)}% · ${fmt(v)} ${l.unit}`;
+   if(v>cap){if(l.width>3)continue;clipped++;const m=el('path',{d:`M${px-5} ${T+7} L${px+5} ${T+7} L${px} ${T-3} Z`,fill:'#F59E0B',stroke:'#B45309','stroke-width':1});m.append(el('title',{},label+' (off scale, clipped)'));svg.append(m);continue;}
+   const c=el('circle',{cx:px,cy:y(v),r:l.width>3?0:2.6,fill:l.color});c.append(el('title',{},label));svg.append(c);}
+ }
+ for(const s of series)if(s.status!=='stable'&&s.status!=='empty'){const m=el('path',{d:`M${x(s.progress_pct)-4} ${T+ph+1} L${x(s.progress_pct)+4} ${T+ph+1} L${x(s.progress_pct)} ${T+ph-7} Z`,fill:'#EF4444'});m.append(el('title',{},`Stage ${s.stage} · ${fmt(s.progress_pct,1)}% · ${s.status==='unstable'?'mechanism: no solution':'error'}`));svg.append(m);}
+ // Marker (not data): where the stage chosen with the slider sits on the progress axis.
+ const cur=plan[currentStage];if(cur){const cx=x(cur.progress_pct),right=cx<L+pw-80;
+  svg.append(el('line',{x1:cx,x2:cx,y1:T,y2:T+ph,stroke:'#00C853','stroke-width':2,'stroke-dasharray':'5 4'}));
+  svg.append(el('text',{x:right?cx+5:cx-5,y:T+12,'text-anchor':right?'start':'end','font-size':11,'font-weight':700,fill:'#00873A'},`Stage ${cur.stage} · ${fmt(cur.progress_pct,1)}%`));}
+ const legend=[...lines.filter(l=>!l.hideLegend),{label:'Stage without solution',color:'#EF4444',marker:true},...(clipped?[{label:`Clipped (> ${fmt(cap,1)} ${lines[0].unit})`,color:'#F59E0B',marker:true}]:[]),{label:'Selected stage (slider)',color:'#00C853',dash:true}];
+ // Leyenda en filas debajo del eje X: nunca tapa los datos.
+ let gx=L,ly=T+ph+52;
+ for(const l of legend){const w=30+l.label.length*6.2;if(gx+w>W-R){gx=L;ly+=17;}
+  svg.append(l.marker?el('path',{d:`M${gx} ${ly+4} L${gx+10} ${ly+4} L${gx+5} ${ly-4} Z`,fill:l.color}):el('line',{x1:gx,x2:gx+16,y1:ly,y2:ly,stroke:l.color,'stroke-width':Math.min(l.width||2,6),'stroke-dasharray':l.dash?'5 4':'','stroke-opacity':l.opacity?Math.max(l.opacity,.35):1}));
+  svg.append(el('text',{x:gx+22,y:ly+4,class:'chart-label'},l.label));gx+=w;}
+ return clipped;
+}
+function renderCharts(){
+ let clipped=chart($('chart-force'),[{key:'max_force_kn',label:'Max |F| (envelope)',color:'#0B2265',width:7,opacity:.18,unit:'kN'},{key:'max_tension_kn',label:'Max tension',color:'#001B96',unit:'kN'},{key:'max_compression_kn',label:'Max compression',color:'#EF4444',unit:'kN'}],'Axial force (kN)','No data yet');
+ clipped+=chart($('chart-displacement'),[{key:'max_displacement_mm',label:'Max deflection',color:'#5A85D7',unit:'mm'}],'Max deflection (mm)','No data yet');
+ const note=$('charts-clip-note');if(note)note.textContent=series&&clipped?`${clipped} point(s) off scale, shown in orange on the top edge.`:'';
+}
+for(const id of ['chart-log','chart-clip'])$(id).addEventListener('change',renderCharts);
+$('btn-charts').onclick=async()=>{
+ if(!geometry||!plan.length)return;const token=++seriesToken,rev=revision;$('btn-charts').disabled=true;
+ $('charts-message').textContent=`Computing ${plan.length} stages…`;
+ try{const value=await api('/api/progress',{geometry,config:config()});if(token!==seriesToken||rev!==revision)return;series=value;
+  const solved=series.filter(s=>s.status==='stable').length,unstable=series.filter(s=>s.status==='unstable').length;
+  $('charts-message').textContent=`${solved} of ${series.length} stages solved`+(unstable?` · ${unstable} with a mechanism (red triangles, no values)`:'')+'. Hover over a point to see its stage.';
+  $('btn-charts-csv').disabled=false;renderCharts();
+ }catch(e){if(token!==seriesToken)return;$('charts-message').textContent=e.message;}finally{if(token===seriesToken)$('btn-charts').disabled=false;}
+};
+$('btn-charts-csv').onclick=()=>{if(!series)return;const cols=['stage','progress_pct','active_count','status','max_tension_kn','max_compression_kn','max_force_kn','max_displacement_mm'];const csv=[cols.join(','),...series.map(s=>cols.map(c=>s[c]===null||s[c]===undefined?'':s[c]).join(','))].join('\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'})),a=document.createElement('a');a.href=url;a.download='assembly-progress.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+renderCharts();
 
 // Boot
 (async()=>{

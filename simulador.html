@@ -413,11 +413,33 @@
     </div>
   </div>
 
+  <!-- Progress charts: max axial force and max deflection vs % assembly progress -->
+  <div class="charts-card" id="charts-card">
+<div class="progress-header" style="align-items:center;flex-wrap:wrap;gap:10px"><strong style="color:var(--gb-darker);font-size:1rem">Progress charts</strong><span style="display:flex;gap:8px;flex-wrap:wrap"><button id="btn-charts" class="btn btn-play">📈 Compute all stages</button><button id="btn-charts-csv" class="btn" disabled>Download data (CSV)</button></span></div>
+<div class="charts-options"><label><input type="checkbox" id="chart-log"> Log scale</label><label><input type="checkbox" id="chart-clip" checked> Clip outliers <span style="color:var(--gray-71)">(&gt; 20 × median)</span></label></div>
+<div id="charts-message" role="status" aria-live="polite" style="font-size:.85rem;color:var(--gray-71);margin-bottom:10px">Compute all stages to see how the maximum axial force and maximum deflection change as assembly progresses.</div>
+<div id="charts-clip-note" style="font-size:.8rem;color:#B45309;margin-bottom:8px"></div>
+<div class="charts-grid">
+<figure><figcaption>Maximum axial force vs % progress</figcaption><svg id="chart-force" viewBox="0 0 600 340" role="img" aria-label="Maximum axial force versus assembly progress"></svg></figure>
+<figure><figcaption>Maximum deflection vs % progress</figcaption><svg id="chart-displacement" viewBox="0 0 600 340" role="img" aria-label="Maximum deflection versus assembly progress"></svg></figure>
+</div>
+</div>
+
   <details style="margin-bottom: 24px; font-size: 0.85rem;">
     <summary style="font-weight: 700; color: var(--gb-darker); cursor: pointer;">Detailed Stage Calculation History Table</summary>
     <div id="stage-history" style="margin-top: 10px; overflow-x: auto;"></div>
   </details>
 
+<style>
+.charts-card{background:#FFFFFF;border:1px solid var(--border-light);border-radius:12px;padding:16px 20px;margin-bottom:20px;box-shadow:0 2px 10px rgba(0,0,0,0.05)}
+.charts-card .progress-header{display:flex;justify-content:space-between;margin-bottom:8px}
+.charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.charts-grid figure{border:1px solid var(--border-light);border-radius:10px;padding:10px;background:#FFFFFF}
+.charts-grid figcaption{font-size:.8rem;font-weight:700;text-transform:uppercase;color:var(--gb-darker);margin-bottom:6px}
+.charts-grid svg{width:100%;height:auto;display:block}
+.chart-axis{stroke:var(--gray-71);stroke-width:1}.chart-grid{stroke:#E2E8F0;stroke-width:1}
+.chart-label{font-size:11px;fill:var(--gray-71)}.charts-options{display:flex;gap:18px;flex-wrap:wrap;font-size:.85rem;margin-bottom:8px}.charts-options label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}.chart-title{font-size:12px;fill:var(--gb-darker);font-weight:700}
+</style>
   <script src="/deformation.js"></script>
   <script src="/reactions.js"></script>
   <script src="/simulator.js"></script>
