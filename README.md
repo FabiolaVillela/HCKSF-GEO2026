@@ -1,99 +1,82 @@
-# Análisis de Montaje Etapa por Etapa para Domos de Acero
+Stage-by-Stage Construction Analysis for Steel Domes
 
-Prototipo para hackathon que muestra cómo cambian las fuerzas y la estabilidad de un domo de acero a medida que se instalan sus barras.
+A hackathon prototype that shows how forces and stability in a steel dome change as its bars are installed.
 
-> **Aviso:** es un prototipo demostrativo. No sirve para autorizar un montaje real.
+Disclaimer: this is a demonstration prototype. It must not be used to authorize a real assembly.
 
-## 1. Problema
+1. Problem
 
-En una empresa que diseña y fabrica domos de acero, hay que asegurar que la estructura sea estable durante la construcción, no solo terminada. Un domo puede tener más de 2,000 barras. La idea es analizar la estructura cada vez que se instalan una o varias barras (el usuario define cada cuántas).
+At a company that designs and manufactures steel domes, the structure must be stable during construction, not only once it is finished. The idea is to analyze the structure every time one or several bars are installed, with the user defining how many.
 
-## 2. Objetivo del hackathon
+2. Hackathon goal
 
-Demostrar, con un domo pequeño de ejemplo, cómo evolucionan estas cantidades en cada etapa de instalación:
-- Fuerza axial y esfuerzo en las barras.
-- Desplazamientos de los nodos.
-- Reacciones en los apoyos.
-- Estabilidad (detectar si la estructura activa es un mecanismo).
+Using a small example dome, show how these quantities evolve at each installation stage:
 
-El enfoque está en que el cálculo funcione y se pueda explicar, no en tener un producto completo.
+Axial force and stress in the bars.
+Node displacements.
+Support reactions.
+Stability (detecting whether the active structure is a mechanism).
 
-## 3. Modelo de cálculo
+The focus is on making the calculation work and being able to explain it, not on delivering a complete product.
 
-- **Armadura articulada 3D:** las barras transmiten solo fuerza axial. Cada nodo tiene 3 grados de libertad (x, y, z).
-- **Cargas:**
-  - Peso propio acumulado de las barras ya instaladas.
-  - Carga de instalación (por ejemplo, el peso de una persona) en el nodo o barra asignado a cada etapa.
-- **Etapas:** se parte del primer anillo ya instalado y se activan barras por etapa (1, 3 o N, según defina el usuario).
-- **Solución:** en cada etapa se resuelve un equilibrio nuevo solo con las barras activas. Las barras no instaladas no aportan peso ni rigidez.
-- **Estabilidad:** si la matriz de rigidez es singular o casi singular, la etapa se marca como "inestable" en lugar de fallar.
-- **Indicador de pandeo (opcional):** relación entre la fuerza de compresión y la carga de Euler, `Pcr = π²EI/L²`.
+3. Calculation model
+3D pin-jointed truss: bars carry axial force only. Each node has 3 degrees of freedom (x, y, z).
+Loads:
+Accumulated self-weight of the bars already installed.
+Installation load (for example, the weight of a person) at the node or bar assigned to each stage.
+Stages: start with the first ring already installed and activate bars per stage (1, 3 or N, as defined by the user).
+Solution: at each stage, a new equilibrium is solved using only the active bars. Bars not yet installed contribute neither weight nor stiffness.
+Stability: if the stiffness matrix is singular or nearly singular, the stage is flagged as "unstable" instead of crashing.
+Buckling indicator (optional): ratio between compressive force and Euler load, Pcr = π²EI/L².
+4. Inputs (fixed Excel template)
+Sheet	Columns
+Nodes	ID, x, y, z
+Bars	ID, node i, node j, profile, installation stage
+Profiles	name, area, moment of inertia (optional), elastic modulus E, density or weight per meter
+Supports	node, restraints (x, y, z)
+Loads	stage, application node, installation load magnitude
+Criteria	allowable stress or yield strength
 
-## 4. Entradas (plantilla de Excel fija)
+Also, a validation case: a simple truss with a hand-calculated solution or, if available, a dome analyzed in SAP2000 or RISA.
 
-| Hoja | Columnas |
-|---|---|
-| Nodos | ID, x, y, z |
-| Barras | ID, nodo i, nodo j, perfil, **etapa de instalación** |
-| Perfiles | nombre, área, inercia (opcional), módulo E, densidad o peso por metro |
-| Apoyos | nodo, restricciones (x, y, z) |
-| Cargas | etapa, nodo de aplicación, magnitud de la carga de instalación |
-| Criterios | esfuerzo admisible o fluencia |
-
-Además, un caso de validación: una armadura simple con solución manual o, si existe, un domo analizado en SAP2000 o RISA.
-
-## 5. Salidas
-
-- Vista 3D del domo coloreada por esfuerzo o utilización.
-- Slider para recorrer las etapas.
-- Gráfica de fuerza máxima contra etapa.
-- Tabla de resultados por barra y por etapa, con exportación a Excel.
-- Indicación clara de las etapas inestables.
-
-## 6. Tecnología propuesta
-
-- Python con NumPy y SciPy (`scipy.sparse`).
-- Pandas y openpyxl para leer y escribir Excel.
-- Plotly para la vista 3D.
-- Streamlit como interfaz.
-
-## 7. Viabilidad
-
-- **Memoria:** no es problema. Un domo de 2,000 barras tiene unos 3,000 grados de libertad y una matriz dispersa de pocos MB.
-- **Tiempo:** cada etapa se resuelve en milisegundos. Cientos o miles de etapas toman segundos o pocos minutos.
-- **La dificultad real es la física:** mecanismos durante el montaje, y la diferencia entre una armadura y las conexiones reales.
-
-## 8. Plan (4–5 horas)
-
-| Hora | Tarea |
-|---|---|
-| 0:00–0:30 | Plantilla de Excel y script que genera un domo de ejemplo (unas 60 barras) |
-| 0:30–1:30 | Solver de armadura 3D, apoyos, fuerzas axiales y reacciones. Validar con caso manual |
-| 1:30–2:15 | Bucle por etapas, peso propio acumulado, carga de instalación y detección de inestabilidad |
-| 2:15–3:30 | Interfaz Streamlit con carga de Excel, slider y vista 3D |
-| 3:30–4:15 | Gráfica por etapa, tabla y exportación |
-| 4:15–5:00 | Pulido, demo y lista de limitaciones |
-
-## 9. Fuera de alcance
-
-- Importación desde CAD.
-- Edición libre del modelo.
-- Múltiples normas y combinaciones de carga.
-- Momentos, flexión local, pandeo con revisión normativa y capacidad de conexiones.
-- Fricción real, apuntalamientos, grúas o cables temporales.
-- Historia física detallada del montaje y análisis no lineal (P-Δ).
-- Interfaz pulida.
-
-## 10. Limitaciones
-
-- La armadura articulada es conservadora: puede declarar inestable algo que en la realidad aguanta gracias a conexiones rígidas.
-- Resolver cada etapa desde cero es una aproximación del proceso real.
-- Los resultados no son una aprobación de seguridad.
-
-## 11. Después del hackathon
-
-1. Elementos de viga (marco) con 6 grados de libertad por nodo.
-2. Pandeo y revisión según norma (AISC u otra).
-3. Importación CAD o DXF.
-4. Análisis P-Δ y apuntalamientos temporales.
-5. Optimización de la secuencia de montaje.
+5. Outputs
+3D view of the dome colored by stress or utilization.
+Slider to step through the stages.
+Plot of maximum force versus stage.
+Results table per bar and per stage, with Excel export.
+Clear indication of unstable stages.
+6. Proposed technology
+Python with NumPy and SciPy (scipy.sparse).
+Pandas and openpyxl to read and write Excel.
+Plotly for the 3D view.
+Streamlit as the interface.
+7. Feasibility
+Memory: not an issue. The stiffness matrix is sparse and takes only a few MB, even for large domes.
+Time: each stage solves in milliseconds, so running through all stages takes seconds or a few minutes.
+The real difficulty is the physics: mechanisms during assembly, and the difference between a truss and real connections.
+8. Plan (4–5 hours)
+Hour	Task
+0:00–0:30	Excel template and a script that generates an example dome (about 60 bars)
+0:30–1:30	3D truss solver, supports, axial forces and reactions. Validate with a hand-calculated case
+1:30–2:15	Stage loop, accumulated self-weight, installation load and instability detection
+2:15–3:30	Streamlit interface with Excel upload, slider and 3D view
+3:30–4:15	Per-stage plot, table and export
+4:15–5:00	Polish, demo and list of limitations
+9. Out of scope
+CAD import.
+Free-form model editing.
+Multiple design codes and load combinations.
+Moments, local bending, code-based buckling checks and connection capacity.
+Real friction, shoring, cranes or temporary cables.
+Detailed physical assembly history and nonlinear (P-Δ) analysis.
+Polished interface.
+10. Limitations
+The pin-jointed truss is conservative: it may declare unstable something that actually stands thanks to rigid connections.
+Solving each stage from scratch is an approximation of the real process.
+Results are not a safety approval.
+11. After the hackathon
+Beam (frame) elements with 6 degrees of freedom per node.
+Buckling and code checks (AISC or other).
+CAD or DXF import.
+P-Δ analysis and temporary shoring.
+Assembly sequence optimization.
