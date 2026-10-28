@@ -80,6 +80,16 @@ window.AISCView=(()=>{
      if(k===key()+'/'+host.context().stage){report=value;busy=false;error='';render();host.redraw();}
    }).catch(e=>{if(token!==generation)return;if(k===key()+'/'+host.context().stage){busy=false;activeKey='';error=e.message;render();host.redraw();}});
  }
+ async function precompute(stage){
+   if(!host)return;
+   const c=host.context();
+   if(!design().grade||c.config.material!=='Acero')return;
+   const k=key(),cacheKey=k+'/'+stage;
+   if(cache.has(cacheKey))return;
+   const value=await api('/api/aisc',{...payload(),stage});
+   if(k!==key())return;
+   cache.set(cacheKey,value);
+ }
  function makeTable(headers,rows){const t=document.createElement('table'),head=t.insertRow();for(const name of headers){const th=document.createElement('th');th.scope='col';th.textContent=name;head.append(th);}for(const values of rows){const row=t.insertRow();for(const v of values)row.insertCell().textContent=v;}return t;}
  function stateLabel(value){const es={tension:'tensión',compression:'compresión',flexotension:'flexotensión',flexocompression:'flexocompresión','biaxial flexure (conservative sum)':'flexión biaxial (suma conservadora)'};return text(value,es[value]||value);}
  function summary(r){
@@ -128,5 +138,5 @@ window.AISCView=(()=>{
    $('aisc-download').onclick=()=>{if(!report)return;const data={selected_stage:report,checked_stages:[...cache.values()],original_stage:host.context().current};const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='aisc-stage-'+report.stage+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
    fetch('/api/design-materials').then(r=>{if(!r.ok)throw Error('Material catalog unavailable');return r.json();}).then(g=>{grades=g;family=null;update();host.redraw();}).catch(e=>{$('design-properties').textContent=e.message;});
  }
- return Object.freeze({init,update,enabled,color,appendMember,appendHistory});
+ return Object.freeze({init,update,precompute,enabled,color,appendMember,appendHistory});
 })();

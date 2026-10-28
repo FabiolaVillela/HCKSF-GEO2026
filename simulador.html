@@ -134,6 +134,7 @@
       margin-bottom: 20px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.05);
     }
+    #btn-analyze:disabled { background: #D1D5DB; color: #6B7280; border-color: #D1D5DB; cursor: not-allowed; box-shadow: none; }
     .progress-header { display: flex; justify-content: space-between; font-size: 0.92rem; margin-bottom: 8px; color: var(--gray-71); }
     .progress-bar-bg { width: 100%; height: 12px; background: #E2E8F0; border-radius: 6px; overflow: hidden; margin-bottom: 16px; }
     .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--gb-pastel), var(--gb-approximate)); transition: width 0.15s ease-out; }
@@ -365,21 +366,6 @@
     <div id="newest-bar-text" class="new-bars-badge"><span data-i18n="Stage 0 · Base Installed">Stage 0 · Base Installed</span></div>
   </div>
 
-  <!-- Dedicated Calculation Preload Bar for Smooth 60 FPS Motion -->
-  <div class="precompute-card" id="precompute-card">
-    <div class="precompute-header">
-      <span style="display:flex; align-items:center; gap:8px;">
-        <span id="precompute-spinner" style="font-size:0.95rem;">⚡</span>
-        <strong id="precompute-label" data-i18n="Precalculating all stages for instant 60 FPS motion…">Precalculating all stages for instant 60 FPS motion…</strong>
-        <span id="precompute-count" style="font-weight:700; color:var(--gb-approximate); font-variant-numeric:tabular-nums;">0 / 0 (0%)</span>
-      </span>
-      <span id="precompute-badge" class="badge badge-pending" data-i18n="CALCULATING…">CALCULATING…</span>
-    </div>
-    <div class="precompute-bar-bg">
-      <div id="precompute-fill" class="precompute-bar-fill"></div>
-    </div>
-  </div>
-
   <!-- Timeline & Progress Bar -->
   <div class="timeline-card">
     <div class="progress-header">
@@ -387,7 +373,12 @@
       <span><span data-i18n="Active Bars:">Active Bars:</span> <strong id="active-bars-count">0</strong> / <span id="total-bars-count">0</span></span>
     </div>
     <div class="progress-bar-bg"><div id="progress-fill" class="progress-bar-fill"></div></div>
+    <div id="analysis-progress" hidden>
+      <div id="analysis-status" role="status" aria-live="polite"></div>
+      <div id="analysis-meter" role="progressbar" aria-labelledby="analysis-status" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" class="progress-bar-bg"><div id="analysis-fill" class="progress-bar-fill"></div></div>
+    </div>
     <div class="slider-row">
+      <button id="btn-analyze" class="btn btn-play" data-i18n="Analyze all stages">Analyze all stages</button>
       <button id="btn-play" class="btn btn-play"><span data-i18n="▶ Play Assembly">▶ Play Assembly</span></button>
       <button id="btn-prev" class="btn" aria-label="Previous stage" data-i18n-aria-label="Previous stage">◀</button>
       <input type="range" aria-label="Assembly stage" data-i18n-aria-label="Assembly stage" id="stage-slider" min="0" max="1" value="0">
