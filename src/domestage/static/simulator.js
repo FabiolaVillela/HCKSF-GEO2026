@@ -3,12 +3,14 @@
 const $=id=>document.getElementById(id), canvas=$('viewport'), ctx=canvas.getContext('2d');
 let geometry=null, plan=[], currentStage=0, current=null, revision=0, requestId=0, playing=false, selected='', segments=[], projected=new Map(), deformedSegments=[];
 const calculated=new Map(); let series=null, seriesToken=0; let q=normalize([.87,-.35,.12,.32]), zoom=1; const pointers=new Map(); let dragged=false, pinch=null, sliderTimer;
+let analysisToken=0, analyzing=false, playbackToken=0;
 let supportOverrides = {}; // {node_id: 'articulado' | 'empotrado'}
 
 
 let language='en';
 try{language=localStorage.getItem('domestage-language')==='es'?'es':'en';}catch{}
 const spanish={
+  "Analyze all stages": "Analizar todas las etapas",
   "Show Dimensions": "Mostrar dimensiones",
   "Overall undeformed model: maximum horizontal span and total vertical height.": "Modelo completo sin deformar: extensión horizontal máxima y altura vertical total.",
   "Material grade:":"Grado de material:",
@@ -269,7 +271,7 @@ function config(){
   };
 }
 
-function stop(){clearTimeout(sliderTimer);playing=false;$('btn-play').textContent=translate("▶ Play Assembly");}
+function stop(){++playbackToken;clearTimeout(sliderTimer);playing=false;$('btn-play').textContent=translate("▶ Play Assembly");}
 
 function clearAnalysis(){
   ++requestId; current=null;
@@ -305,7 +307,7 @@ async function replan(reset=false){
     if(rev!==revision)return; plan=p;
     $('stage-slider').max=plan.length-1; $('last-stage').textContent=plan.length-1;
     await setStage(reset?0:Math.min(currentStage,plan.length-1));
-    precomputeAllStages(plan, rev);
+
   }catch(error){
     if(rev!==revision)return; badge("ERROR",'error'); setMessage(error.message);
   }
@@ -320,60 +322,6 @@ function applyStage(stage, value){
     $('newest-bar-text').textContent=s.new_bar_ids.length ? s.new_bar_ids.map(i=>translate("Bar #")+i).join(', ') : translate("Base Ring Installed");
   }
   renderResult(value);
-}
-
-async function precomputeAllStages(currentPlan, rev){
-  const total=currentPlan.length; if(total<=1)return;
-  const card=$('precompute-card');
-  if(card){
-    card.classList.remove('complete');
-    $('precompute-spinner').textContent='⚡';
-    $('precompute-badge').textContent=translate('CALCULATING…');
-    $('precompute-badge').className='badge badge-pending';
-  }
-  const updateProgress=()=>{
-    if(rev!==revision)return;
-    const count=calculated.size, pct=Math.round((count/total)*100);
-    $('precompute-count').textContent=count+' / '+total+' ('+pct+'%)';
-    $('precompute-fill').style.width=pct+'%';
-    $('precompute-label').textContent=translate("Precalculating stage {current} of {total}…",{current:count,total});
-  };
-  updateProgress();
-  const missing=[];
-  for(let s=0; s<total; s++)if(!calculated.has(s))missing.push(s);
-
-  const BATCH_SIZE=8;
-  for(let i=0; i<missing.length; i+=BATCH_SIZE){
-    if(rev!==revision)return;
-    const batch=missing.slice(i, i+BATCH_SIZE);
-    try{
-      const results=await api('/api/stages/batch',{geometry,config:config(),stages:batch});
-      if(rev!==revision)return;
-      for(const res of results)calculated.set(res.stage, res);
-      updateProgress();
-    }catch(err){
-      if(rev!==revision)return;
-      for(const s of batch){
-        if(rev!==revision)return;
-        try{
-          const res=await api('/api/stage',{geometry,config:config(),stage:s});
-          if(rev!==revision)return;
-          calculated.set(s, res); updateProgress();
-        }catch(e){}
-      }
-    }
-  }
-  if(rev!==revision)return;
-  if(card){
-    card.classList.add('complete');
-    $('precompute-spinner').textContent='✓';
-    $('precompute-badge').textContent=translate("READY / 60 FPS");
-    $('precompute-badge').className='badge badge-stable';
-    $('precompute-label').textContent=translate("All {total} stages precalculated in memory · Fluid 60 FPS motion active",{total});
-    $('precompute-count').textContent=total+' / '+total+' (100%)';
-    $('precompute-fill').style.width='100%';
-  }
-  history();
 }
 
 function pendingStage(stage){
@@ -730,22 +678,49 @@ $('stage-slider').addEventListener('input',()=>{
 });
 $('btn-prev').onclick=()=>{stop(); setStage(currentStage-1);};
 $('btn-next').onclick=()=>{stop(); setStage(currentStage+1);};
-$('btn-play').onclick=async()=>{
-  if(playing){stop(); return;}
-  playing=true; $('btn-play').textContent=translate("⏸ Pause");
-  if(currentStage===plan.length-1)await setStage(0);
-  while(playing&&currentStage<plan.length-1){
-    const next=currentStage+1;
-    if(calculated.has(next)){
-      applyStage(next, calculated.get(next));
-    } else {
-      const r=await setStage(next);
-      if(!r||!r.stable){stop(); break;}
+function showAnalysisProgress(done,total,complete=false,error=''){
+  const percent=total?Math.floor(done/total*100):0;
+  $('analysis-progress').hidden=false;
+  $('analysis-fill').style.width=percent+'%';
+  $('analysis-fill').style.background=complete?'#16a34a':'#2563eb';
+  $('analysis-meter').setAttribute('aria-valuenow',percent);
+  $('analysis-status').textContent=(language==='es'?'Análisis: ':'Analysis: ')+percent+'%'+(error?' · '+error:complete?(language==='es'?' · Completado':' · Complete'):'');
+}
+async function analyzeStages(){
+  if(analyzing||$('btn-analyze').disabled||!geometry||!plan.length)return;
+  stop();const token=++analysisToken,rev=revision,model=geometry,cfg=config(),steps=[...plan];
+  analyzing=true;$('btn-analyze').disabled=true;let done=0,complete=false;showAnalysisProgress(0,steps.length);
+  try{
+    for(const step of steps){
+      const result=calculated.get(step.stage)||await api('/api/stage',{geometry:model,config:cfg,stage:step.stage});
+      if(token!==analysisToken||rev!==revision)return;
+      calculated.set(step.stage,result);
+      await window.AISCView?.precompute(step.stage);
+      if(token!==analysisToken||rev!==revision)return;
+      showAnalysisProgress(++done,steps.length);
     }
-    await new Promise(r=>setTimeout(r,65));
-  }
-  stop();
-};
+    showAnalysisProgress(done,steps.length,true);window.AISCView?.update();selectionDetail();draw();history();complete=true;
+  }catch(e){if(token===analysisToken)showAnalysisProgress(done,steps.length,false,e.message);}
+  finally{if(token===analysisToken){analyzing=false;$('btn-analyze').disabled=complete;}}
+}
+async function playAssembly(){
+  if(playing){stop();return;}
+  if(!plan.length)return;
+  stop();const token=playbackToken,rev=revision;
+  playing=true;$('btn-play').textContent=translate('⏸ Pause');
+  try{
+    for(let stage=currentStage;stage<plan.length;stage++){
+      if(token!==playbackToken||rev!==revision)return;
+      const result=await setStage(stage);
+      if(token!==playbackToken||rev!==revision)return;
+      if(!result)break;
+      if(stage<plan.length-1)await new Promise(resolve=>setTimeout(resolve,250));
+    }
+  }finally{if(token===playbackToken)stop();}
+}
+$('btn-analyze').onclick=analyzeStages;
+$('btn-play').onclick=playAssembly;
+
 
 for(const id of ['sel-profile','sel-material','sel-connection','sel-support'])$(id).addEventListener('change',()=>replan());
 $('sel-step').addEventListener('change',()=>replan(true));
@@ -918,7 +893,7 @@ new ResizeObserver(draw).observe(canvas);
 const SVG='http://www.w3.org/2000/svg';
 function el(tag,attrs={},text){const e=document.createElementNS(SVG,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,v);if(text!==undefined)e.textContent=text;return e;}
 function niceMax(v){if(!(v>0))return 1;const p=10**Math.floor(Math.log10(v)),m=v/p;return (m<=1?1:m<=2?2:m<=5?5:10)*p;}
-function clearCharts(){++seriesToken;series=null;$('btn-charts-csv').disabled=true;$('btn-charts').disabled=false;$('charts-message').textContent=translate('Compute all stages to see how the maximum axial force and maximum deflection change as assembly progresses.');renderCharts();}
+function clearCharts(){++analysisToken;analyzing=false;$('btn-analyze').disabled=false;$('analysis-progress').hidden=true;++seriesToken;series=null;$('btn-charts-csv').disabled=true;$('btn-charts').disabled=false;$('charts-message').textContent=translate('Compute all stages to see how the maximum axial force and maximum deflection change as assembly progresses.');renderCharts();}
 const OUTLIER_FACTOR=20;
 function median(v){const a=[...v].sort((x,y)=>x-y),m=a.length>>1;return a.length%2?a[m]:(a[m-1]+a[m])/2;}
 // opts.limit: draw a reference line (e.g. utilization = 1) and paint points above it red.
@@ -991,7 +966,7 @@ function renderCharts(){
 }
 for(const id of ['chart-log','chart-clip'])$(id).addEventListener('change',renderCharts);
 // The utilization chart depends on the material grade: changing it invalidates the computed series.
-for(const id of ['design-grade','design-fy','design-fu','design-source'])$(id)?.addEventListener('input',()=>{if(series)clearCharts();});
+for(const id of ['design-grade','design-fy','design-fu','design-source'])$(id)?.addEventListener('input',()=>{clearCharts();});
 $('btn-charts').onclick=async()=>{
  if(!geometry||!plan.length)return;const token=++seriesToken,rev=revision;$('btn-charts').disabled=true;
  $('charts-message').textContent=translate('Computing {count} stages…',{count:plan.length});
