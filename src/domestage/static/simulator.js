@@ -1047,6 +1047,13 @@ translateStatic();
     replan,
     draw,
     canvas,
+    setCameraQ: (newQ) => { q = normalize(newQ); draw(); },
+    getCameraQ: () => q,
+    orbitZ: (angleRad) => {
+      const rotZ = [Math.cos(angleRad / 2), 0, 0, Math.sin(angleRad / 2)];
+      q = normalize(mul(q, rotZ));
+      draw();
+    },
     orbit: (dx, dy) => {
       const n = Math.hypot(dx, dy);
       if(n){
