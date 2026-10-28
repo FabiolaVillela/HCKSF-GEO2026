@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DomeStage · Pitch Deck Hackathon GEO 2026</title>
+  <style>
+    :root {
+      --gb-approximate: #001B96;
+      --gb-darker: #0B2265;
+      --gb-pastel: #5A85D7;
+      --gb-pastel-light: #B3C8E6;
+      --gb-cyan: #00D2FF;
+      --gray-dark: #0A0F1D;
+      --gray-card: #131C31;
+      --gray-border: #1E2D4A;
+      --text-main: #FFFFFF;
+      --text-muted: #94A3B8;
+      --accent-green: #10B981;
+      --accent-magenta: #FF00FF;
+      --accent-amber: #F59E0B;
+      --accent-red: #EF4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    
+    body {
+      background-color: var(--gray-dark);
+      color: var(--text-main);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    /* Top presentation navigation bar */
+    .top-bar {
+      height: 58px;
+      background: rgba(11, 34, 101, 0.7);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--gray-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 50;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      font-size: 1.05rem;
+    }
+    .brand-logo {
+      background: linear-gradient(135deg, var(--gb-cyan), var(--gb-approximate));
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 1.1rem;
+      box-shadow: 0 0 12px rgba(0, 210, 255, 0.4);
+    }
+    .brand-sub {
+      color: var(--gb-pastel);
+      font-size: 0.82rem;
+      font-weight: 500;
+      letter-spacing: 0.2px;
+    }
+
+    .top-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-nav {
+      background: var(--gray-card);
+      border: 1px solid var(--gray-border);
+      color: var(--text-main);
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+    .btn-nav:hover {
+      background: var(--gb-darker);
+      border-color: var(--gb-pastel);
+      transform: translateY(-1px);
+    }
+    .btn-live {
+      background: linear-gradient(135deg, var(--gb-approximate), var(--gb-darker));
+      border: 1px solid var(--gb-pastel);
+      color: #FFFFFF;
+      box-shadow: 0 0 14px rgba(0, 27, 150, 0.5);
+    }
+    .btn-live:hover {
+      background: linear-gradient(135deg, #0A2CD4, var(--gb-approximate));
+      box-shadow: 0 0 20px rgba(0, 210, 255, 0.4);
+    }
+
+    /* Main Slides Container */
+    .slides-wrapper {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+    }
+
+    .slide {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      opacity: 0;
+      visibility: hidden;
+      transform: scale(0.96) translateY(20px);
+      transition: all 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+      padding: 40px 60px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform: scale(1) translateY(0);
+      z-index: 10;
+    }
+
+    /* Slide Content Layouts */
+    .slide-split {
+      display: grid;
+      grid-template-columns: 1.05fr 1.15fr;
+      gap: 48px;
+      align-items: center;
+      height: 100%;
+      max-width: 1440px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .slide-full {
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Typography */
+    .slide-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(90, 133, 215, 0.15);
+      border: 1px solid rgba(90, 133, 215, 0.3);
+      color: var(--gb-cyan);
+      padding: 5px 14px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+      width: fit-content;
+    }
+
+    h1.hero-title {
+      font-size: 3.4rem;
+      font-weight: 900;
+      letter-spacing: -1px;
+      line-height: 1.1;
+      margin-bottom: 18px;
+      background: linear-gradient(135deg, #FFFFFF 30%, var(--gb-pastel-light) 70%, var(--gb-cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    h2.slide-title {
+      font-size: 2.3rem;
+      font-weight: 800;
+      line-height: 1.18;
+      margin-bottom: 18px;
+      letter-spacing: -0.5px;
+    }
+
+    p.lead-text {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    /* Feature Cards & Metric Badges */
+    .feature-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .feature-item {
+      background: rgba(19, 28, 49, 0.7);
+      border: 1px solid var(--gray-border);
+      border-left: 4px solid var(--gb-pastel);
+      border-radius: 10px;
+      padding: 14px 18px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .feature-item:hover {
+      border-color: var(--gb-cyan);
+      transform: translateX(4px);
+    }
+    .feature-icon {
+      font-size: 1.3rem;
+      line-height: 1;
+      margin-top: 2px;
+    }
+    .feature-body h4 {
+      font-size: 0.98rem;
+      font-weight: 700;
+      color: #FFFFFF;
+      margin-bottom: 4px;
+    }
+    .feature-body p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    /* GIF Media Container */
+    .gif-frame {
+      background: #000000;
+      border: 1px solid var(--gray-border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 24px rgba(0, 27, 150, 0.25);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    .gif-frame-header {
+      background: rgba(10, 15, 29, 0.95);
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--gray-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: var(--gb-pastel-light);
+      font-weight: 600;
+    }
+    .gif-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .gif-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .gif-dot-red { background: #EF4444; }
+    .gif-dot-yellow { background: #F59E0B; }
+    .gif-dot-green { background: #10B981; }
+
+    .gif-media {
+      width: 100%;
+      height: auto;
+      max-height: 520px;
+      object-fit: contain;
+      display: block;
+      background: #FFFFFF;
+    }
+    .gif-caption {
+      background: rgba(10, 15, 29, 0.9);
+      padding: 8px 16px;
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--gray-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Cards Grid for Problem & Impact */
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      width: 100%;
+      margin-top: 24px;
+    }
+    .card-box {
+      background: var(--gray-card);
+      border: 1px solid var(--gray-border);
+      border-radius: 14px;
+      padding: 26px 22px;
+      text-align: left;
+      transition: all 0.25s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .card-box:hover {
+      border-color: var(--gb-pastel);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+    }
+    .card-danger {
+      border-top: 4px solid var(--accent-red);
+    }
+    .card-accent {
+      border-top: 4px solid var(--gb-cyan);
+    }
+    .card-success {
+      border-top: 4px solid var(--accent-green);
+    }
+
+    /* Bottom Control Bar */
+    .bottom-bar {
+      height: 54px;
+      background: rgba(10, 15, 29, 0.85);
+      border-top: 1px solid var(--gray-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      z-index: 50;
+    }
+    .progress-dots {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .p-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--gray-border);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .p-dot.active {
+      background: var(--gb-cyan);
+      box-shadow: 0 0 10px var(--gb-cyan);
+      width: 26px;
+      border-radius: 999px;
+    }
+    .kbd-hints {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    kbd {
+      background: var(--gray-card);
+      border: 1px solid var(--gray-border);
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-family: monospace;
+      color: #FFFFFF;
+      font-size: 0.75rem;
+    }
+
+    /* Speaker Notes Drawer */
+    #speaker-notes-drawer {
+      position: fixed;
+      bottom: 54px;
+      left: 0;
+      width: 100%;
+      background: rgba(7, 14, 36, 0.98);
+      border-top: 2px solid var(--gb-pastel);
+      padding: 18px 36px;
+      z-index: 100;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.7);
+    }
+    #speaker-notes-drawer.open {
+      transform: translateY(0);
+    }
+    .notes-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .notes-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--gb-cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .notes-content {
+      font-size: 0.95rem;
+      line-height: 1.55;
+      color: #E2E8F0;
+      max-height: 110px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <header class="top-bar">
+    <div class="brand">
+      <div class="brand-logo">G</div>
+      <div>
+        <div>DomeStage <span style="font-weight:400; opacity:0.8;">· Geometrica</span></div>
+        <div class="brand-sub" data-i18n="sub">Hackathon GEO 2026 · Pitch Oficial</div>
+      </div>
+    </div>
+
+    <div class="top-controls">
+      <button class="btn-nav" id="btn-lang" title="Toggle Language / Cambiar Idioma">
+        🌐 <span id="lang-label">ES / EN</span>
+      </button>
+      <button class="btn-nav" id="btn-notes" title="Guion del Orador (N)">
+        🎙️ <span data-i18n="notes-btn">Guion Orador</span>
+      </button>
+      <button class="btn-nav" id="btn-fullscreen" title="Pantalla Completa (F)">
+        ⛶ <span data-i18n="fs-btn">Pantalla Completa</span>
+      </button>
+      <a href="http://127.0.0.1:8503/" target="_blank" class="btn-nav btn-live">
+        🚀 <span data-i18n="live-btn">Abrir Simulador</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Slides Container -->
+  <main class="slides-wrapper">
+
+    <!-- SLIDE 1: Portada -->
+    <section class="slide slide-full active" data-notes-es="Bienvenidos al pitch de DomeStage. Los domos de acero son de las estructuras más resistentes del mundo una vez cerrados. Pero durante su montaje, están incompletos y son vulnerables a mecanismos de colapso. DomeStage es el primer simulador estructural interactivo a 60 FPS en el navegador que calcula equilibrio real, estabilidad y norma AISC en cada paso del montaje." data-notes-en="Welcome to DomeStage. Steel domes are among the strongest structures in the world once complete. But during erection, they are incomplete cantilevers vulnerable to collapse mechanisms. DomeStage is the first real-time 60fps browser simulator solving elastic equilibrium, stability, and AISC 360-22 at every single erection step.">
+      <div class="slide-tag">✨ Geometrica Hackathon 2026</div>
+      <h1 class="hero-title">DomeStage</h1>
+      <h3 style="font-size: 1.5rem; font-weight: 600; color: var(--gb-pastel-light); margin-bottom: 24px; max-width: 860px;" data-i18n="s1-sub">
+        Simulación Estructural y Verificación Normativa en Tiempo Real para el Montaje de Domos de Acero
+      </h3>
+      <p class="lead-text" style="max-width: 780px;" data-i18n="s1-lead">
+        Un domo cerrado es indestructible. Pero durante el montaje es un voladizo en el espacio. DomeStage previene el colapso y garantiza la seguridad antes de que la cuadrilla instale la primera barra.
+      </p>
+
+      <div style="display:flex; gap:16px; margin-top:20px;">
+        <div style="background:var(--gray-card); border:1px solid var(--gray-border); padding:10px 20px; border-radius:999px; font-size:0.85rem; font-weight:600; color:var(--gb-cyan); display:flex; align-items:center; gap:8px;">
+          ⚡ 60 FPS Web Engine
+        </div>
+        <div style="background:var(--gray-card); border:1px solid var(--gray-border); padding:10px 20px; border-radius:999px; font-size:0.85rem; font-weight:600; color:var(--accent-green); display:flex; align-items:center; gap:8px;">
+          📐 ANSI/AISC 360-22 LRFD
+        </div>
+        <div style="background:var(--gray-card); border:1px solid var(--gray-border); padding:10px 20px; border-radius:999px; font-size:0.85rem; font-weight:600; color:var(--gb-pastel); display:flex; align-items:center; gap:8px;">
+          📊 Reporte Excel Bilingüe
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 2: El Reto Oculto -->
+    <section class="slide slide-full" data-notes-es="Aquí explicamos el problema real de ingeniería. Las estructuras espaciales se diseñan para su estado final cerrado. En el montaje, falta el anillo superior de compresión: las barras vuelan en voladizo. Un error en la secuencia de colocación o una articulación no prevista puede generar mecanismos cinemáticos instantáneos que pongan en peligro la vida de las cuadrillas." data-notes-en="Here is the core engineering challenge. Domes are engineered for their final hoop membrane action. During cantilever erection, the dome lacks closed hoop stiffness. A misplaced bar or mechanism can cause instant snap-through, risking field crews and expensive equipment. Traditional FEA takes hours to solve 60 erection stages.">
+      <div class="slide-tag" style="border-color: rgba(239, 68, 68, 0.4); color: var(--accent-red);">⚠️ El Reto de Ingeniería</div>
+      <h2 class="slide-title" data-i18n="s2-title">¿Por Qué el Montaje es la Etapa Más Crítica de un Domo?</h2>
+      <p class="lead-text" style="max-width: 820px;" data-i18n="s2-lead">
+        Los programas tradicionales diseñan el domo en su geometría final. Pero el colapso ocurre en obra, cuando la estructura está incompleta y no existe el efecto membrana cerrado.
+      </p>
+
+      <div class="grid-3">
+        <div class="card-box card-danger">
+          <div style="font-size:2rem;">💥</div>
+          <h3 style="font-size:1.15rem; font-weight:700;" data-i18n="s2-c1-t">Mecanismos Cinemáticos</h3>
+          <p style="font-size:0.88rem; color:var(--text-muted); line-height:1.5;" data-i18n="s2-c1-d">
+            Al montar 2 barras en voladizo, si los nodos no cuentan con triangulación suficiente se genera un mecanismo instantáneo (rigidez cero) y deformaciones fuera de control.
+          </p>
+        </div>
+
+        <div class="card-box card-danger">
+          <div style="font-size:2rem;">📉</div>
+          <h3 style="font-size:1.15rem; font-weight:700;" data-i18n="s2-c2-t">Empuje y Pandeo en Voladizo</h3>
+          <p style="font-size:0.88rem; color:var(--text-muted); line-height:1.5;" data-i18n="s2-c2-d">
+            Bajo peso propio, los arcos incompletos sufren momentos de flexión biaxial no previstos en el diseño final, sobrecargando las barras de los primeros anillos.
+          </p>
+        </div>
+
+        <div class="card-box card-accent">
+          <div style="font-size:2rem;">⏳</div>
+          <h3 style="font-size:1.15rem; font-weight:700;" data-i18n="s2-c3-t">Software CAD vs Realidad</h3>
+          <p style="font-size:0.88rem; color:var(--text-muted); line-height:1.5;" data-i18n="s2-c3-d">
+            Los visores CAD 3D son 'ciegos': solo muestran geometría sin física. Y el FEA tradicional toma horas o días para recalcular manualmente 60 etapas de montaje.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 3: Solución DomeStage -->
+    <section class="slide" data-notes-es="Miren el GIF 1. Esta es la aplicación en acción. A la izquierda explicamos la innovación: DomeStage lee directamente el archivo CAD DXF y resuelve la secuencia de montaje real a 60 cuadros por segundo. Las barras magenta son las dos barras recién instaladas. El gradiente azul y rojo muestra al instante si una barra está en tracción o compresión." data-notes-en="Look at GIF 1 in action. On the left: DomeStage imports DXF directly and simulates the 60-stage erection sequence at 60 FPS in WebGL/Canvas. The magenta glow highlights the 2 newly added bars. Blue indicates axial tension, red is compression. Engineers see immediately how forces redistribute as rings close.">
+      <div class="slide-split">
+        <div>
+          <div class="slide-tag">🚀 Demostración 1 · Velocidad & Interacción</div>
+          <h2 class="slide-title" data-i18n="s3-title">DomeStage: Montaje Progresivo en Tiempo Real</h2>
+          <p class="lead-text" data-i18n="s3-lead">
+            Simulación interactiva a 60 FPS con cálculo matricial instantáneo. El ingeniero recorre barra por barra la secuencia de montaje con total fluidez.
+          </p>
+
+          <div class="feature-list">
+            <div class="feature-item">
+              <div class="feature-icon">✨</div>
+              <div class="feature-body">
+                <h4 data-i18n="s3-f1-t">Resaltado de Nuevas Barras (Magenta)</h4>
+                <p data-i18n="s3-f1-d">Identificación visual instantánea de los 2 elementos recién instalados por la cuadrilla en cada etapa.</p>
+              </div>
+            </div>
+            <div class="feature-item">
+              <div class="feature-icon">🎨</div>
+              <div class="feature-body">
+                <h4 data-i18n="s3-f2-t">Gradiente de Esfuerzos Axiales</h4>
+                <p data-i18n="s3-f2-d">Código de color continuo: Azul para tracción, Rojo para compresión, Amarillo para esfuerzo neutro.</p>
+              </div>
+            </div>
+            <div class="feature-item">
+              <div class="feature-icon">📐</div>
+              <div class="feature-body">
+                <h4 data-i18n="s3-f3-t">Importación Directa CAD / DXF</h4>
+                <p data-i18n="s3-f3-d">Carga modelos reales de Geometrica directamente desde capas DXF o modelos paramétricos nativos.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="gif-frame">
+          <div class="gif-frame-header">
+            <div class="gif-dots"><span class="gif-dot gif-dot-red"></span><span class="gif-dot gif-dot-yellow"></span><span class="gif-dot gif-dot-green"></span></div>
+            <span>simulador.html · Montaje Progresivo 60 FPS</span>
+            <span>QUICKDOME Ø40m · 100%</span>
+          </div>
+          <img src="docs/gifs/domestage_app_demo.gif" alt="Montaje Progresivo" class="gif-media">
+          <div class="gif-caption">
+            <span>🔴 Compresión &nbsp;|&nbsp; 🔵 Tracción &nbsp;|&nbsp; 🟣 +2 Barras recién montadas</span>
+            <span style="color:var(--gb-cyan); font-weight:700;">60 FPS Interactive</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 4: Deformada Amplificada y Reacciones -->
+    <section class="slide" data-notes-es="GIF 2 demuestra que detrás de la interfaz hay cálculo estructural riguroso. Al activar la deformada amplificada (10x a 100x), se observa cómo la cúpula se flexiona bajo su propio peso en voladizo. Al encender los vectores de reacción, vemos los conos de empuje en la cimentación: fuerza radial hacia afuera y componentes tangenciales que deben resistir los anclajes." data-notes-en="GIF 2 demonstrates the rigorous FEA solver underneath. Turning on amplified deflection (10x to 100x) reveals true physical sag under self-weight. Activating support reactions shows 3D cones at anchor nodes, revealing radial thrust outward and tangential forces on the foundation pins.">
+      <div class="slide-split">
+        <div>
+          <div class="slide-tag">🔬 Demostración 2 · Física Real</div>
+          <h2 class="slide-title" data-i18n="s4-title">Deformada Nodal y Reacciones en Cimentación</h2>
+          <p class="lead-text" data-i18n="s4-lead">
+            No es un render hueco: el solver resuelve la rigidez elástica tridimensional (6 GDL por nodo) y calcula flechas milimétricas y empujes en los apoyos.
+          </p>
+
+          <div class="feature-list">
+            <div class="feature-item">
+              <div class="feature-icon">🔍</div>
+              <div class="feature-body">
+                <h4 data-i18n="s4-f1-t">Multiplicador de Deflexión (10× a 100×)</h4>
+                <p data-i18n="s4-f1-d">Permite apreciar a simple vista el pandeo y la curvatura que experimenta la cúpula durante su crecimiento.</p>
+              </div>
+            </div>
+            <div class="feature-item">
+              <div class="feature-icon">🎯</div>
+              <div class="feature-body">
+                <h4 data-i18n="s4-f2-t">Vectores de Reacción 3D en Apoyos</h4>
+                <p data-i18n="s4-f2-d">Desglose en coordenadas globales (Rx, Ry, Rz) y cilíndricas: empuje radial hacia afuera y tangencial.</p>
+              </div>
+            </div>
+            <div class="feature-item">
+              <div class="feature-icon">⚙️</div>
+              <div class="feature-body">
+                <h4 data-i18n="s4-f3-t">Condiciones de Borde Configurables</h4>
+                <p data-i18n="s4-f3-d">Simulación con apoyos articulados (3 GDL) o empotrados (6 GDL), y formulación con o sin rigidez a flexión.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="gif-frame">
+          <div class="gif-frame-header">
+            <div class="gif-dots"><span class="gif-dot gif-dot-red"></span><span class="gif-dot gif-dot-yellow"></span><span class="gif-dot gif-dot-green"></span></div>
+            <span>simulador.html · Deformada y Vectores de Reacción</span>
+            <span>SOLVER ELÁSTICO 3D</span>
+          </div>
+          <img src="docs/gifs/2_amplified_deformation.gif" alt="Deformada y Reacciones" class="gif-media">
+          <div class="gif-caption">
+            <span>🟢 Rx / 🔴 Ry / 🔵 Rz &nbsp;|&nbsp; Multiplicador interactivo</span>
+            <span style="color:var(--accent-green); font-weight:700;">6-DOF FEA Engine</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 5: Gráficas de Evolución y Mecanismos -->
+    <section class="slide" data-notes-es="GIF 3 muestra la inteligencia de seguridad. Con un clic en 'Calcular todas las etapas', la app genera las curvas envolventes de axiales máximos y deflexión máxima a lo largo de todo el montaje. El cursor verde está sincronizado con el slider. Si en alguna etapa hay un mecanismo inestable, la app lo detecta matemáticamente y alerta en rojo antes de mandar cuadrillas a obra." data-notes-en="GIF 3 shows safety intelligence. Clicking 'Compute all stages' renders envelope curves of maximum axial force and deflection vs erection progress. The green tracker line synchronizes with the slider. If any stage creates a kinematic mechanism, DomeStage catches the singularity mathematically and flags it in red before sending crews to site.">
+      <div class="slide-split">
+        <div>
+          <div class="slide-tag">📊 Demostración 3 · Inteligencia de Seguridad</div>
+          <h2 class="slide-title" data-i18n="s5-title">Curvas de Evolución y Detección de Inestabilidades</h2>
+          <p class="lead-text" data-i18n="s5-lead">
+            DomeStage identifica con precisión matemática quirúrgica en qué etapa exacta la estructura sufre los mayores esfuerzos y deflexiones.
+          </p>
+
+          <div class="feature-list">
+            <div class="feature-item">
+              <div class="feature-icon">📈</div>
+              <div class="feature-body">
+                <h4 data-i18n="s5-f1-t">Curvas de Esfuerzos y Flechas en SVG</h4>
+                <p data-i18n="s5-f1-d">Envolvente de fuerza axial máxima (|F| máx, tracción, compresión) y deflexión vertical vs % de avance.</p>
+              </div>
+            </div>
+            <div class="feature-item">
+              <div class="feature-icon">🛡️</div>
+              <div class="feature-body">
+                <h4 data-i18n="s5-f2-t">Detección Automática de Mecanismos</h4>
+                <p data-i18n="s5-f2-d">El solver detecta singularidades de rigidez y marca triángulos rojos alertando inestabilidad cinemática.</p>
+              </div>
+            </div>
+            <div class="feature-item">
+              <div class="feature-icon">🔄</div>
+              <div class="feature-body">
+                <h4 data-i18n="s5-f3-t">Sincronización Bidireccional</h4>
+                <p data-i18n="s5-f3-d">El cursor verde punteado se mueve en tiempo real conforme el usuario avanza el montaje en el visor 3D.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="gif-frame">
+          <div class="gif-frame-header">
+            <div class="gif-dots"><span class="gif-dot gif-dot-red"></span><span class="gif-dot gif-dot-yellow"></span><span class="gif-dot gif-dot-green"></span></div>
+            <span>simulador.html · Gráficas de Avance y Envolventes</span>
+            <span>CURVAS DE SEGURIDAD</span>
+          </div>
+          <img src="docs/gifs/3_progress_charts.gif" alt="Gráficas de Progreso" class="gif-media">
+          <div class="gif-caption">
+            <span>🟢 Rastreador sincronizado &nbsp;|&nbsp; 🔺 Alerta de Mecanismo</span>
+            <span style="color:var(--gb-cyan); font-weight:700;">Envolventes 100% SVG</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 6: Norma AISC 360-22 y Reporte Excel -->
+    <section class="slide" data-notes-es="GIF 4 corona la aplicación llevándola de un visor gráfico a una herramienta de ingeniería certificable. Implementamos la norma ANSI/AISC 360-22 LRFD para tubos HSS: factores 1.4D, espesor de diseño 0.93t y ecuaciones de interacción H1-1a y b. Todas las barras cumplen en verde, y con un clic se descarga la memoria de cálculo en Excel con todos los esfuerzos de las 60 etapas." data-notes-en="GIF 4 completes the transition from a 3D viewer to a production structural tool. We implemented ANSI/AISC 360-22 LRFD member checks for HSS tubes: 1.4D load combination, design thickness 0.93t, and H1-1a/b interaction. Compliant bars turn emerald green. With one click, engineers export the executive bilingual Excel workbook with the calculation history of all 60 stages.">
+      <div class="slide-split">
+        <div>
+          <div class="slide-tag">📋 Demostración 4 · Certificación Normativa</div>
+          <h2 class="slide-title" data-i18n="s6-title">Verificación AISC 360-22 y Reporte Ejecutivo</h2>
+          <p class="lead-text" data-i18n="s6-lead">
+            De un modelo 3D a una memoria de cálculo oficial lista para firma de ingeniería y entrega a cliente.
+          </p>
+
+          <div class="feature-list">
+            <div class="feature-item">
+              <div class="feature-icon">⚖️</div>
+              <div class="feature-body">
+                <h4 data-i18n="s6-f1-t">ANSI/AISC 360-22 LRFD Incorporado</h4>
+                <p data-i18n="s6-f1-d">Combinación 1.4D, espesor de diseño 0.93t, esbeltez KL/r, Capítulos D, E, F8 e interacción H1-1a/b.</p>
+              </div>
+            </div>
+            <div class="feature-item">
+              <div class="feature-icon">🟢</div>
+              <div class="feature-body">
+                <h4 data-i18n="s6-f2-t">Inspección de Miembro en 3D</h4>
+                <p data-i18n="s6-f2-d">Barras en verde (U ≤ 1.0) y rojo (U > 1.0). Clic en barra para ver capacidades nominales y ecuación gobernante.</p>
+              </div>
+            </div>
+            <div class="feature-item">
+              <div class="feature-icon">📄</div>
+              <div class="feature-body">
+                <h4 data-i18n="s6-f3-t">Reporte Ejecutivo en Excel (.xlsx)</h4>
+                <p data-i18n="s6-f3-d">Exportación bilingüe (EN/ES) con tablas resumen de barras críticas, apoyos y envolventes por etapa.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="gif-frame">
+          <div class="gif-frame-header">
+            <div class="gif-dots"><span class="gif-dot gif-dot-red"></span><span class="gif-dot gif-dot-yellow"></span><span class="gif-dot gif-dot-green"></span></div>
+            <span>simulador.html · AISC 360-22 LRFD & Reporte Excel</span>
+            <span>INGENIERÍA CERTIFICADA</span>
+          </div>
+          <img src="docs/gifs/4_aisc_check.gif" alt="Verificación AISC" class="gif-media">
+          <div class="gif-caption">
+            <span>🟢 Verde U ≤ 1.0 &nbsp;|&nbsp; 📑 Ecuación H1-1a &nbsp;|&nbsp; 📊 Excel Export</span>
+            <span style="color:var(--accent-green); font-weight:700;">AISC 360-22 LRFD</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 7: Impacto para Geometrica -->
+    <section class="slide slide-full" data-notes-es="Aquí cerramos con el impacto de negocio para Geometrica. Tradicionalmente, revisar secuencias de montaje toma semanas de modelado y reuniones. Con DomeStage, reducimos ese tiempo a segundos, eliminamos el riesgo para las cuadrillas en alturas y damos al equipo de ventas una herramienta visual impactante para cerrar proyectos frente al cliente." data-notes-en="Here is the business impact for Geometrica. Traditionally, staging checks take days of static FEA setup. DomeStage turns this into instant simulation on a laptop, slashing engineering hours, ensuring field safety for crane crews, and giving project managers an executive visualization tool to win client confidence.">
+      <div class="slide-tag">💼 Impacto de Negocio</div>
+      <h2 class="slide-title" data-i18n="s7-title">Valor Estratégico y Retorno de Inversión</h2>
+      <p class="lead-text" style="max-width: 820px;" data-i18n="s7-lead">
+        DomeStage transforma la seguridad, la productividad técnica y la confianza de los clientes de Geometrica en todo el mundo.
+      </p>
+
+      <div class="grid-3">
+        <div class="card-box card-success">
+          <div style="font-size:2rem;">👷‍♂️</div>
+          <h3 style="font-size:1.15rem; font-weight:700;" data-i18n="s7-c1-t">Seguridad Cero Accidentes</h3>
+          <p style="font-size:0.88rem; color:var(--text-muted); line-height:1.5;" data-i18n="s7-c1-d">
+            Certeza matemática de que cada barra instalada en obra tiene rigidez positiva y no provocará un mecanismo de colapso inesperado.
+          </p>
+        </div>
+
+        <div class="card-box card-accent">
+          <div style="font-size:2rem;">⏱️</div>
+          <h3 style="font-size:1.15rem; font-weight:700;" data-i18n="s7-c2-t">De Días a Segundos</h3>
+          <p style="font-size:0.88rem; color:var(--text-muted); line-height:1.5;" data-i18n="s7-c2-d">
+            Ahorro masivo de horas hombre de ingeniería estructural al automatizar el cálculo iterativo de 60+ etapas con un solo clic.
+          </p>
+        </div>
+
+        <div class="card-box card-accent">
+          <div style="font-size:2rem;">🌐</div>
+          <h3 style="font-size:1.15rem; font-weight:700;" data-i18n="s7-c3-t">100% Web · Cero Instalación</h3>
+          <p style="font-size:0.88rem; color:var(--text-muted); line-height:1.5;" data-i18n="s7-c3-d">
+            Corre en la laptop del ingeniero en campo, en la tablet del supervisor de grúa o en la sala de juntas corporativa.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SLIDE 8: Cierre y Demo en Vivo -->
+    <section class="slide slide-full" data-notes-es="Para concluir: DomeStage no asume que la estructura es estable; lo demuestra matemáticamente en cada barra instalada. Les invitamos a abrir la aplicación en vivo para probar cualquier secuencia de montaje o inspeccionar cualquier barra. Muchas gracias, abrimos la sesión de preguntas." data-notes-en="To conclude: DomeStage does not assume a structure is stable; it mathematically proves it at every installed bar. We invite the judges to interact with the live simulator right now. Thank you, and we welcome your questions.">
+      <div class="slide-tag">🏁 Conclusión</div>
+      <h1 class="hero-title" style="font-size: 3rem; margin-bottom: 12px;">DomeStage</h1>
+      <h3 style="font-size: 1.45rem; font-weight: 600; color: var(--gb-cyan); margin-bottom: 20px;" data-i18n="s8-quote">
+        "No asumimos que la estructura es estable: lo demostramos en cada barra instalada."
+      </h3>
+      <p class="lead-text" style="max-width: 720px; margin-bottom: 32px;" data-i18n="s8-lead">
+        El estándar digital para el montaje seguro y eficiente de domos geométricos de acero.
+      </p>
+
+      <div style="display:flex; gap:18px;">
+        <a href="http://127.0.0.1:8503/" target="_blank" class="btn-nav btn-live" style="padding:14px 28px; font-size:1.05rem; border-radius:12px;">
+          🚀 <span data-i18n="s8-btn-live">Lanzar Simulador en Vivo</span>
+        </a>
+        <button class="btn-nav" onclick="goToSlide(0)" style="padding:14px 24px; font-size:1rem; border-radius:12px;">
+          ⏮️ <span data-i18n="s8-btn-restart">Reiniciar Presentación</span>
+        </button>
+      </div>
+
+      <div style="margin-top: 40px; font-size: 0.85rem; color: var(--text-muted);">
+        Equipo Hackathon GEO 2026 · Geometrica
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Speaker Notes Drawer -->
+  <aside id="speaker-notes-drawer">
+    <div class="notes-header">
+      <div class="notes-title">🎙️ <span data-i18n="notes-head">Guion del Orador (Pitch Script)</span></div>
+      <button class="btn-nav" id="btn-close-notes" style="padding:3px 10px; font-size:0.75rem;">✕ Cerrar [N]</button>
+    </div>
+    <div class="notes-content" id="speaker-notes-text">
+      ...
+    </div>
+  </aside>
+
+  <!-- Bottom Control Bar -->
+  <footer class="bottom-bar">
+    <div class="kbd-hints">
+      <span><kbd>←</kbd> <kbd>→</kbd> <span data-i18n="k-nav">Navegar</span></span>
+      <span><kbd>Espacio</kbd> <span data-i18n="k-space">Avanzar</span></span>
+      <span><kbd>N</kbd> <span data-i18n="k-notes">Guion</span></span>
+      <span><kbd>F</kbd> <span data-i18n="k-fs">Pantalla Completa</span></span>
+    </div>
+
+    <div class="progress-dots" id="dots-container"></div>
+
+    <div style="font-size:0.82rem; color:var(--gb-pastel-light); font-weight:600;">
+      <span id="slide-num">1</span> / <span id="slide-total">8</span>
+    </div>
+  </footer>
+
+  <script>
+    let currentSlide = 0;
+    let language = 'es';
+    let notesOpen = false;
+
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    const dotsContainer = document.getElementById('dots-container');
+    const slideNum = document.getElementById('slide-num');
+    const slideTotal = document.getElementById('slide-total');
+    const notesDrawer = document.getElementById('speaker-notes-drawer');
+    const notesText = document.getElementById('speaker-notes-text');
+    const langLabel = document.getElementById('lang-label');
+
+    slideTotal.textContent = totalSlides;
+
+    // Create dots
+    slides.forEach((_, i) => {
+      const dot = document.createElement('div');
+      dot.className = 'p-dot' + (i === 0 ? ' active' : '');
+      dot.onclick = () => goToSlide(i);
+      dotsContainer.appendChild(dot);
+    });
+
+    const dots = document.querySelectorAll('.p-dot');
+
+    function updateSlide() {
+      slides.forEach((s, i) => {
+        s.classList.toggle('active', i === currentSlide);
+      });
+      dots.forEach((d, i) => {
+        d.classList.toggle('active', i === currentSlide);
+      });
+      slideNum.textContent = currentSlide + 1;
+
+      // Update speaker notes
+      const active = slides[currentSlide];
+      const note = language === 'es' ? active.dataset.notesEs : active.dataset.notesEn;
+      notesText.textContent = note || '';
+    }
+
+    function goToSlide(n) {
+      if (n >= 0 && n < totalSlides) {
+        currentSlide = n;
+        updateSlide();
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlide();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlide();
+      }
+    }
+
+    function toggleNotes() {
+      notesOpen = !notesOpen;
+      notesDrawer.classList.toggle('open', notesOpen);
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+
+    // Keyboard handlers
+    window.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'Home') {
+        goToSlide(0);
+      } else if (e.key === 'End') {
+        goToSlide(totalSlides - 1);
+      } else if (e.key === 'f' || e.key === 'F') {
+        toggleFullscreen();
+      } else if (e.key === 'n' || e.key === 'N') {
+        toggleNotes();
+      }
+    });
+
+    document.getElementById('btn-notes').onclick = toggleNotes;
+    document.getElementById('btn-close-notes').onclick = toggleNotes;
+    document.getElementById('btn-fullscreen').onclick = toggleFullscreen;
+
+    // Bilingual dictionary
+    const dict = {
+      en: {
+        'sub': 'GEO 2026 Hackathon · Official Pitch',
+        'notes-btn': 'Speaker Script',
+        'fs-btn': 'Fullscreen',
+        'live-btn': 'Open Simulator',
+        's1-sub': 'Real-Time Structural Simulation and Code Compliance for Steel Dome Erection',
+        's1-lead': 'A closed dome is indestructible. But during erection it is a cantilever in space. DomeStage prevents collapse and ensures safety before crews install the first bar.',
+        's2-title': 'Why Is Erection the Most Critical Stage of a Dome?',
+        's2-lead': 'Traditional software only verifies the completed geometry. But structural failures occur in the field when the dome is incomplete and lacks closed hoop stiffness.',
+        's2-c1-t': 'Kinematic Mechanisms',
+        's2-c1-d': 'Erecting 2 cantilever bars without sufficient triangulation instantly forms a zero-stiffness mechanism, causing runaway displacements.',
+        's2-c2-t': 'Thrust & Cantilever Buckling',
+        's2-c2-d': 'Under self-weight, incomplete rings develop severe biaxial bending not present in the final dome, overloading initial ring bars.',
+        's2-c3-t': 'Blind CAD vs Reality',
+        's2-c3-d': '3D CAD viewports are blind: they show geometry without physics. And heavy FEA takes hours to manually recalculate 60 erection stages.',
+        's3-title': 'DomeStage: Real-Time Progressive Erection',
+        's3-lead': 'Interactive 60 FPS simulation powered by instantaneous matrix equilibrium. Structural engineers navigate stage by stage with zero lag.',
+        's3-f1-t': 'Newly Installed Bars Highlight (Magenta)',
+        's3-f1-d': 'Immediate visual identification of the 2 elements installed in each stage.',
+        's3-f2-t': 'Continuous Axial Force Gradient',
+        's3-f2-d': 'Fluid color coding: Blue for tension, Red for compression, Yellow for zero force.',
+        's3-f3-t': 'Direct CAD / DXF Import',
+        's3-f3-d': 'Loads production Geometrica models directly from DXF layers or parametric models.',
+        's4-title': 'Nodal Deflection and Support Reactions',
+        's4-lead': 'Not a hollow animation: a 3D elastic stiffness solver (6 DOFs per node) resolves self-weight displacements and foundation thrusts.',
+        's4-f1-t': 'Deflection Multiplier (10× to 100×)',
+        's4-f1-d': 'Visually inspect sag and flexure during dome cantilever growth.',
+        's4-f2-t': '3D Support Reaction Vectors',
+        's4-f2-d': 'Global (Rx, Ry, Rz) and cylindrical breakdown: outward radial thrust and tangential forces.',
+        's4-f3-t': 'Configurable Boundary Conditions',
+        's4-f3-d': 'Simulate with pinned (3 DOF) or fixed (6 DOF) supports, and frame or truss bar formulations.',
+        's5-title': 'Progress Curves and Stability Monitoring',
+        's5-lead': 'DomeStage pinpoints the exact construction stage where peak demands and deflections occur.',
+        's5-f1-t': 'SVG Force and Deflection Curves',
+        's5-f1-d': 'Maximum axial force envelope and vertical deflection plotted against % completion.',
+        's5-f2-t': 'Automated Mechanism Detection',
+        's5-f2-d': 'Instantly identifies stiffness matrix singularities and flags unbuildable stages in red.',
+        's5-f3-t': 'Bidirectional Timeline Synchronization',
+        's5-f3-d': 'The green tracker cursor aligns in real time with the 3D model.',
+        's6-title': 'ANSI/AISC 360-22 LRFD and Executive Report',
+        's6-lead': 'From a 3D visualizer to an official engineering calculation ready for client sign-off.',
+        's6-f1-t': 'Built-In ANSI/AISC 360-22 LRFD',
+        's6-f1-d': '1.4D load combination, design thickness 0.93t, slenderness KL/r, and H1-1a/b interaction.',
+        's6-f2-t': 'Interactive 3D Member Inspection',
+        's6-f2-d': 'Green bars (U ≤ 1.0) and red bars (U > 1.0). Click any bar to inspect nominal capacities.',
+        's6-f3-t': 'Executive Excel Report (.xlsx)',
+        's6-f3-d': 'Bilingual export (EN/ES) with critical envelopes for all bars and support nodes.',
+        's7-title': 'Strategic Value & Return on Investment',
+        's7-lead': 'DomeStage transforms safety, engineering productivity, and client confidence worldwide.',
+        's7-c1-t': 'Zero-Accident Safety',
+        's7-c1-d': 'Mathematical proof that every bar erected in the field possesses positive stiffness.',
+        's7-c2-t': 'From Days to Seconds',
+        's7-c2-d': 'Saves hundreds of engineering hours by automating iterative staging calculations.',
+        's7-c3-t': '100% Web · Zero Installation',
+        's7-c3-d': 'Runs anywhere: field laptops, crane tablets, or executive boardrooms.',
+        's8-quote': '"We do not assume a structure is stable: we prove it at every bar installed."',
+        's8-lead': 'The digital benchmark for safe and efficient steel dome erection.',
+        's8-btn-live': 'Launch Live Simulator',
+        's8-btn-restart': 'Restart Presentation',
+        'k-nav': 'Navigate', 'k-space': 'Advance', 'k-notes': 'Script', 'k-fs': 'Fullscreen',
+        'notes-head': 'Speaker Script'
+      }
+    };
+
+    // Spanish dictionary as fallback
+    const dictEs = {};
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      dictEs[el.getAttribute('data-i18n')] = el.textContent.trim();
+    });
+
+    document.getElementById('btn-lang').onclick = () => {
+      language = language === 'es' ? 'en' : 'es';
+      langLabel.textContent = language === 'es' ? 'ES / EN' : 'EN / ES';
+      const d = language === 'en' ? dict.en : dictEs;
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const k = el.getAttribute('data-i18n');
+        if (d[k]) el.textContent = d[k];
+      });
+      updateSlide();
+    };
+
+    // Initialize
+    updateSlide();
+  </script>
+</body>
+</html>
