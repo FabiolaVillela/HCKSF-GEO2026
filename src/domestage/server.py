@@ -87,12 +87,33 @@ class Handler(BaseHTTPRequestHandler):
             self.send(400,{'message':str(exc)})
 
 
-def main():
+DEFAULT_HOST='127.0.0.1'
+DEFAULT_PORT=8503
+
+
+def parse_args(argv=None,env=None):
+    """Host and port from the command line, else from HOST / PORT (set by hosts such as Render).
+
+    Locally nothing changes: 127.0.0.1:8503, reachable only from this computer. A deployment
+    passes --host 0.0.0.0 (or HOST=0.0.0.0) so the platform's proxy can reach the server.
+    """
+    import os
+    env=os.environ if env is None else env
     parser=argparse.ArgumentParser(description='Simulador de montaje con motor estructural local')
-    parser.add_argument('--port',type=int,default=8503)
-    args=parser.parse_args()
-    server=ThreadingHTTPServer(('127.0.0.1',args.port),Handler)
-    print(f'Simulador: http://127.0.0.1:{server.server_port}',flush=True)
+    parser.add_argument('--host',default=env.get('HOST') or DEFAULT_HOST,
+                        help='Interface to listen on (default: HOST env var or 127.0.0.1).')
+    parser.add_argument('--port',type=int,default=int(env.get('PORT') or DEFAULT_PORT),
+                        help='Port (default: PORT env var or 8503).')
+    args=parser.parse_args(argv)
+    if not 0<args.port<65536: parser.error('--port must be between 1 and 65535.')
+    return args
+
+
+def main(argv=None):
+    args=parse_args(argv)
+    server=ThreadingHTTPServer((args.host,args.port),Handler)
+    shown='127.0.0.1' if args.host in ('0.0.0.0','::') else args.host
+    print(f'Simulador: http://{shown}:{server.server_port} (escuchando en {args.host})',flush=True)
     try: server.serve_forever()
     except KeyboardInterrupt: pass
     finally: server.server_close()

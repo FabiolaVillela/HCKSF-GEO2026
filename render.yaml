@@ -1,0 +1,13 @@
+# Render Blueprint: publishes the HTML simulator (simulador.html + src/domestage/server.py).
+# Steps: docs/DEPLOY_RENDER.md. Python version: .python-version (3.12, latest patch).
+services:
+  - type: web
+    name: domestage-plus
+    runtime: python
+    plan: free
+    branch: main
+    autoDeploy: true
+    buildCommand: pip install -r requirements.txt
+    # Render sets PORT; 0.0.0.0 lets its proxy reach the server (locally the default stays 127.0.0.1).
+    startCommand: PYTHONPATH=src python -m domestage.server --host 0.0.0.0 --port $PORT
+    healthCheckPath: /
