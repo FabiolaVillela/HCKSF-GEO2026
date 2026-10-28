@@ -31,15 +31,6 @@ class Handler(BaseHTTPRequestHandler):
         path=urlsplit(self.path).path
         if path in ('/','/simulador.html'):
             return self.send(200,(ROOT/'simulador.html').read_bytes(),'text/html; charset=utf-8')
-        if path in ('/presentacion.html', '/presentation.html'):
-            p = ROOT/'presentacion.html'
-            if p.exists(): return self.send(200,p.read_bytes(),'text/html; charset=utf-8')
-        if path.startswith('/docs/gifs/') or path.startswith('/gifs/'):
-            f = ROOT / path.lstrip('/')
-            if not f.exists(): f = ROOT / 'docs' / path.lstrip('/')
-            if f.exists() and f.is_file():
-                mime = 'image/gif' if str(f).endswith('.gif') else 'image/png'
-                return self.send(200, f.read_bytes(), mime)
         if path in ('/simulator.js','/deformation.js','/reactions.js','/aisc-view.js'):
             return self.send(200,(ROOT/'src/domestage/static'/path.lstrip('/')).read_bytes(),'text/javascript; charset=utf-8')
         if path=='/api/design-materials': return self.send(200,material_catalog())
@@ -81,13 +72,6 @@ class Handler(BaseHTTPRequestHandler):
             if url.path=='/api/report':
                 report=build_report(payload['geometry'],payload.get('config'),payload.get('design'))
                 return self.send(200,report_xlsx(report,payload.get('language','en')),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-            if url.path=='/api/save-frame':
-                import base64
-                folder = ROOT/'docs'/'gifs'/payload.get('folder','frames')
-                folder.mkdir(parents=True,exist_ok=True)
-                header,b64 = payload['data'].split(',',1)
-                (folder/payload['filename']).write_bytes(base64.b64decode(b64))
-                return self.send(200,{'saved':payload['filename']})
             if url.path=='/api/stage':
                 return self.send(200,solve_stage(payload['geometry'],payload.get('config'),payload.get('stage',0)))
             if url.path=='/api/stages/batch':
