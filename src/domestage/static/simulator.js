@@ -1034,49 +1034,9 @@ translateStatic();
     if(urlParams.get('deformed')==='1'){ $('show-deformation').checked=true; updateDeformation(); draw(); }
     if(urlParams.get('reactions')==='1'){ $('show-reactions').checked=true; updateReactions(); draw(); }
     if(urlParams.get('aisc')==='1'){ $('show-aisc').checked=true; $('design-grade').value='a500-21-c'; window.AISCView?.update(); draw(); }
-    if(urlParams.has('record')){ setTimeout(()=>window.recordDemo(urlParams.get('record')), 400); }
   }catch(e){
     badge("SERVER OFFLINE",'error'); setMessage(e.message+translate(" · Run: PYTHONPATH=src python -m domestage.server"));
   }
-  async function captureFrame(folder, filename){
-    const data = canvas.toDataURL('image/png');
-    await api('/api/save-frame', {folder, filename, data});
-  }
-  window.recordDemo = async function(type){
-    if(type==='assembly'){
-      for(let s=0; s<=60; s+=3){
-        await setStage(s);
-        await new Promise(r=>setTimeout(r, 70));
-        await captureFrame('assembly', `frame_${String(s).padStart(3,'0')}.png`);
-      }
-    } else if(type==='deformation'){
-      await setStage(60);
-      $('show-deformation').checked=false; $('show-reactions').checked=false;
-      updateDeformation(); updateReactions(); draw();
-      await captureFrame('deformation', 'frame_000.png');
-      $('show-deformation').checked=true;
-      for(let fac=10; fac<=100; fac+=15){
-        $('deformation-factor').value=fac;
-        updateDeformation(); draw();
-        await new Promise(r=>setTimeout(r, 70));
-        await captureFrame('deformation', `frame_${String(fac).padStart(3,'0')}.png`);
-      }
-      $('show-reactions').checked=true;
-      updateReactions(); draw();
-      await new Promise(r=>setTimeout(r, 70));
-      await captureFrame('deformation', 'frame_110.png');
-    } else if(type==='aisc'){
-      await setStage(60);
-      $('show-aisc').checked=false;
-      window.AISCView?.update(); draw();
-      await captureFrame('aisc', 'frame_000.png');
-      $('show-aisc').checked=true;
-      $('design-grade').value='a500-21-c';
-      window.AISCView?.update(); draw();
-      await new Promise(r=>setTimeout(r, 300));
-      await captureFrame('aisc', 'frame_001.png');
-    }
-  };
   window.simulator = {
     setStage,
     getStage: () => currentStage,
