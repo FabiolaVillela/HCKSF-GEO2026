@@ -13,6 +13,8 @@ PYTHONPATH=src python3 -m domestage.server --port 8503
 
 Abrir `http://127.0.0.1:8503`. `simulador.html` necesita ese servidor; abrirlo directamente como archivo o servirlo con un servidor estático no ejecuta el motor.
 
+Para publicarlo en internet (Render), ver [docs/DEPLOY_RENDER.md](docs/DEPLOY_RENDER.md). El servidor acepta `--host` y `--port` (o las variables `HOST` y `PORT`); por defecto sigue en `127.0.0.1:8503`.
+
 La interfaz Streamlit también usa el mismo adaptador:
 
 ```bash
